@@ -1,7 +1,7 @@
 {# templates/profile.html #}
 {% extends "base.html" %}
 
-{% block title %}My Profile — Spendly{% endblock %}
+{% block title %}My Profile — ExpenseIQ{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
@@ -14,16 +14,21 @@
         <!-- User info card -->
         <div class="profile-header-card">
             <div class="profile-avatar">{{ user.initials }}</div>
+
             <div class="profile-info">
                 <h1 class="profile-name">{{ user.name }}</h1>
                 <p class="profile-email">{{ user.email }}</p>
                 <p class="profile-since">Member since {{ user.member_since }}</p>
             </div>
-            <a href="{{ url_for('expenses.add_expense') }}" class="btn-primary profile-add-btn">+ Add Expense</a>
+
+            <a href="{{ url_for('expenses.add_expense') }}" class="btn-primary profile-add-btn">
+                + Add Expense
+            </a>
         </div>
 
         <!-- Filter bar -->
         <div class="filter-bar">
+
             <div class="filter-presets">
                 <a href="{{ url_for('profile') }}"
                    class="filter-preset-btn{% if not date_from and not date_to %} filter-preset-btn--active{% endif %}">
@@ -51,27 +56,42 @@
             <form class="filter-form" method="GET" action="{{ url_for('profile') }}">
                 <input type="date" name="date_from" class="filter-date-input"
                        value="{{ date_from or '' }}">
+
                 <span class="filter-to-label">to</span>
+
                 <input type="date" name="date_to" class="filter-date-input"
                        value="{{ date_to or '' }}">
+
                 <button type="submit" class="filter-apply-btn">Apply</button>
             </form>
         </div>
 
         <!-- Summary stats -->
         <div class="profile-stats">
+
             <div class="stat-card">
                 <span class="stat-label">Total Spent</span>
                 <span class="stat-value">₹{{ stats.total }}</span>
             </div>
+
             <div class="stat-card">
                 <span class="stat-label">Transactions</span>
                 <span class="stat-value">{{ stats.count }}</span>
             </div>
+
             <div class="stat-card">
                 <span class="stat-label">Top Category</span>
                 <span class="stat-value">{{ stats.top_category }}</span>
             </div>
+
+            <!-- 🔥 NEW: Anomaly Count -->
+            <div class="stat-card">
+                <span class="stat-label">Anomalies</span>
+                <span class="stat-value">
+                    {{ expenses | selectattr("is_anomaly") | list | length }}
+                </span>
+            </div>
+
         </div>
 
         <!-- Grid -->
@@ -79,12 +99,14 @@
 
             <!-- Transactions -->
             <div class="profile-section">
+
                 <div class="section-title-row">
                     <h2 class="section-title">Recent Transactions</h2>
                 </div>
 
                 <div class="tx-table-wrapper">
                     <table class="tx-table">
+
                         <thead>
                             <tr>
                                 <th>Date</th>
@@ -97,28 +119,61 @@
 
                         <tbody>
                             {% for tx in expenses %}
-                            <tr>
-                                <td class="tx-date">{{ tx.date }}</td>
-                                <td class="tx-desc">{{ tx.description }}</td>
+
+                            <tr class="{% if tx.is_anomaly %}tx-anomaly{% endif %}">
+
+                                <!-- Date -->
+                                <td class="tx-date">
+                                    {{ tx.date }}
+                                </td>
+
+                                <!-- Description -->
+                                <td class="tx-desc">
+                                    {% if tx.is_anomaly %}
+                                        <span class="anomaly-icon">⚠️</span>
+                                    {% endif %}
+                                    {{ tx.description }}
+                                </td>
+
+                                <!-- Category -->
                                 <td>
                                     <span class="cat-badge cat-badge--{{ tx.category | lower }}">
                                         {{ tx.category }}
                                     </span>
                                 </td>
-                                <td class="tx-amount">₹{{ tx.amount }}</td>
-                                <td class="tx-actions">
-                                    <!-- ✅ FIXED -->
-                                    <a href="{{ url_for('expenses.edit_expense', id=tx.id) }}" class="tx-edit-link">Edit</a>
 
-                                    <!-- ✅ FIXED -->
+                                <!-- Amount -->
+                                <td class="tx-amount">
+                                    ₹{{ tx.amount }}
+
+                                    {% if tx.is_anomaly %}
+                                        <span class="anomaly-tag">Unusual</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="tx-actions">
+
+                                    <a href="{{ url_for('expenses.edit_expense', id=tx.id) }}"
+                                       class="tx-edit-link">
+                                        Edit
+                                    </a>
+
                                     <form method="POST"
                                           action="{{ url_for('expenses.delete_expense', id=tx.id) }}"
                                           style="display:inline"
                                           onsubmit="return confirm('Delete this expense?')">
-                                        <button type="submit" class="btn-delete">Delete</button>
+
+                                        <button type="submit" class="btn-delete">
+                                            Delete
+                                        </button>
+
                                     </form>
+
                                 </td>
+
                             </tr>
+
                             {% endfor %}
 
                             {% if not expenses %}
@@ -128,18 +183,25 @@
                                 </td>
                             </tr>
                             {% endif %}
+
                         </tbody>
+
                     </table>
                 </div>
+
             </div>
 
             <!-- Category Breakdown -->
             <div class="profile-section">
+
                 <h2 class="section-title">By Category</h2>
 
                 <div class="category-list">
+
                     {% for cat in categories %}
+
                     <div class="cat-row">
+
                         <div class="cat-row-header">
                             <span class="cat-row-name">{{ cat.name }}</span>
                             <span class="cat-row-amount">₹{{ cat.amount }}</span>
@@ -150,9 +212,13 @@
                                  style="width: {{ cat.percent }}%">
                             </div>
                         </div>
+
                     </div>
+
                     {% endfor %}
+
                 </div>
+
             </div>
 
         </div>

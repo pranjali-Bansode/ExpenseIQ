@@ -444,3 +444,35 @@
     color: var(--ink-faint);
     font-size: 0.875rem;
 }
+/* 🔴 anomaly row highlight */
+.tx-anomaly {
+    background: #fff5f5;
+}
+
+/* ⚠️ icon */
+.anomaly-icon {
+    color: red;
+    margin-right: 6px;
+}
+
+/* badge in amount */
+.anomaly-tag {
+    background: #ff4d4f;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+.anomaly-badge {
+    background: #ff4d4d;
+    color: white;
+    font-size: 12px;
+    padding: 3px 8px;
+    margin-left: 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+.anomaly-row {
+    background-color: rgba(255, 77, 77, 0.08);
+}
