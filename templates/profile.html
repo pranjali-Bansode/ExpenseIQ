@@ -1,228 +1,195 @@
-{# templates/profile.html #}
 {% extends "base.html" %}
 
-{% block title %}My Profile — ExpenseIQ{% endblock %}
+{% block title %}Profile — ExpenseIQ{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content %}
-<div class="profile-page">
-    <div class="profile-inner">
 
-        <!-- User info card -->
-        <div class="profile-header-card">
-            <div class="profile-avatar">{{ user.initials }}</div>
+<div class="dashboard">
 
-            <div class="profile-info">
-                <h1 class="profile-name">{{ user.name }}</h1>
-                <p class="profile-email">{{ user.email }}</p>
-                <p class="profile-since">Member since {{ user.member_since }}</p>
-            </div>
+    <!-- TOP BAR -->
+    <div class="topbar">
 
-            <a href="{{ url_for('expenses.add_expense') }}" class="btn-primary profile-add-btn">
-                + Add Expense
-            </a>
+    <div class="user-box">
+        <div class="avatar">
+            {{ user['name'][0] }}
+        </div>
+        <div>
+            <div class="main">{{ user['name'] }}</div>
+            <div class="sub">{{ user['email'] }}</div>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center;">
+
+        <!-- ADD EXPENSE BUTTON -->
+        <a href="{{ url_for('expenses.add_expense') }}" class="primary-btn">
+            + Add Expense
+        </a>
+
+        <!-- LOGOUT -->
+        <a href="{{ url_for('logout') }}" class="primary-btn" style="background:#ff4d4f;">
+            Logout
+        </a>
+
+    </div>
+
+</div>
+
+    <!-- GRID -->
+    <div class="grid">
+
+        <div class="card">
+            <div class="label">Total Expense</div>
+            <h2>₹{{ total }}</h2>
         </div>
 
-        <!-- Filter bar -->
-        <div class="filter-bar">
-
-            <div class="filter-presets">
-                <a href="{{ url_for('profile') }}"
-                   class="filter-preset-btn{% if not date_from and not date_to %} filter-preset-btn--active{% endif %}">
-                    All Time
-                </a>
-
-                <a href="{{ url_for('profile', date_from=presets.this_month.date_from, date_to=presets.this_month.date_to) }}"
-                   class="filter-preset-btn{% if date_from == presets.this_month.date_from and date_to == presets.this_month.date_to %} filter-preset-btn--active{% endif %}">
-                    This Month
-                </a>
-
-                <a href="{{ url_for('profile', date_from=presets.last_3.date_from, date_to=presets.last_3.date_to) }}"
-                   class="filter-preset-btn{% if date_from == presets.last_3.date_from and date_to == presets.last_3.date_to %} filter-preset-btn--active{% endif %}">
-                    Last 3 Months
-                </a>
-
-                <a href="{{ url_for('profile', date_from=presets.last_6.date_from, date_to=presets.last_6.date_to) }}"
-                   class="filter-preset-btn{% if date_from == presets.last_6.date_from and date_to == presets.last_6.date_to %} filter-preset-btn--active{% endif %}">
-                    Last 6 Months
-                </a>
-            </div>
-
-            <div class="filter-divider"></div>
-
-            <form class="filter-form" method="GET" action="{{ url_for('profile') }}">
-                <input type="date" name="date_from" class="filter-date-input"
-                       value="{{ date_from or '' }}">
-
-                <span class="filter-to-label">to</span>
-
-                <input type="date" name="date_to" class="filter-date-input"
-                       value="{{ date_to or '' }}">
-
-                <button type="submit" class="filter-apply-btn">Apply</button>
-            </form>
+        <div class="card">
+            <div class="label">Transactions</div>
+            <h2>{{ expenses|length }}</h2>
         </div>
 
-        <!-- Summary stats -->
-        <div class="profile-stats">
-
-            <div class="stat-card">
-                <span class="stat-label">Total Spent</span>
-                <span class="stat-value">₹{{ stats.total }}</span>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-label">Transactions</span>
-                <span class="stat-value">{{ stats.count }}</span>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-label">Top Category</span>
-                <span class="stat-value">{{ stats.top_category }}</span>
-            </div>
-
-            <!-- 🔥 NEW: Anomaly Count -->
-            <div class="stat-card">
-                <span class="stat-label">Anomalies</span>
-                <span class="stat-value">
-                    {{ expenses | selectattr("is_anomaly") | list | length }}
-                </span>
-            </div>
-
+        <div class="card">
+            <div class="label">Categories</div>
+            <h2>{{ categories|length }}</h2>
         </div>
 
-        <!-- Grid -->
-        <div class="profile-grid">
+    </div>
 
-            <!-- Transactions -->
-            <div class="profile-section">
+    <!-- MAIN LAYOUT -->
+    <div class="layout">
 
-                <div class="section-title-row">
-                    <h2 class="section-title">Recent Transactions</h2>
-                </div>
+        <!-- LEFT: BUDGET -->
+<div class="card">
+    <!-- ✨ NEW: SET BUDGET BUTTON -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>Budgets</h3>
+        <button class="primary-btn" style="padding: 8px 12px; font-size: 13px;" onclick="openBudgetModal()">
+            + Set Budget
+        </button>
+    </div>
 
-                <div class="tx-table-wrapper">
-                    <table class="tx-table">
+    <div class="budget-list">
+        {% if budgets %}
+            {% for cat, amt in budgets.items() %}
+            <div class="budget-item">
+    <div>
+        <span style="font-weight: 500;">{{ cat }}</span>
+        <div style="font-size: 12px; color: #777; margin-top: 2px;">
+            Budget: ₹{{ amt }}
+        </div>
+    </div>
+    <div style="text-align: right; display:flex; gap:6px; align-items:center;">
+        <div style="font-weight: 600;">₹{{ amt }}</div>
+        <button type="button" class="icon-btn" title="Edit"
+                onclick="openBudgetModal('{{ cat }}', '{{ amt }}')">✏️</button>
+        <form method="POST" action="{{ url_for('budget.delete_budget_route', category=cat) }}"
+              style="display:inline;" onsubmit="return confirm('Remove budget for {{ cat }}?');">
+            <button type="submit" class="icon-btn" title="Delete">🗑️</button>
+        </form>
+    </div>
+</div>
+            {% endfor %}
+        {% else %}
+            <!-- ✨ NEW: EMPTY STATE -->
+            <p style="color: #999; text-align: center; padding: 20px 0; font-size: 13px;">
+                No budgets set. Click "+ Set Budget" to create one.
+            </p>
+        {% endif %}
+    </div>
+</div>
 
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Category</th>
-                                <th class="tx-amount-col">Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {% for tx in expenses %}
-
-                            <tr class="{% if tx.is_anomaly %}tx-anomaly{% endif %}">
-
-                                <!-- Date -->
-                                <td class="tx-date">
-                                    {{ tx.date }}
-                                </td>
-
-                                <!-- Description -->
-                                <td class="tx-desc">
-                                    {% if tx.is_anomaly %}
-                                        <span class="anomaly-icon">⚠️</span>
-                                    {% endif %}
-                                    {{ tx.description }}
-                                </td>
-
-                                <!-- Category -->
-                                <td>
-                                    <span class="cat-badge cat-badge--{{ tx.category | lower }}">
-                                        {{ tx.category }}
-                                    </span>
-                                </td>
-
-                                <!-- Amount -->
-                                <td class="tx-amount">
-                                    ₹{{ tx.amount }}
-
-                                    {% if tx.is_anomaly %}
-                                        <span class="anomaly-tag">Unusual</span>
-                                    {% endif %}
-                                </td>
-
-                                <!-- Actions -->
-                                <td class="tx-actions">
-
-                                    <a href="{{ url_for('expenses.edit_expense', id=tx.id) }}"
-                                       class="tx-edit-link">
-                                        Edit
-                                    </a>
-
-                                    <form method="POST"
-                                          action="{{ url_for('expenses.delete_expense', id=tx.id) }}"
-                                          style="display:inline"
-                                          onsubmit="return confirm('Delete this expense?')">
-
-                                        <button type="submit" class="btn-delete">
-                                            Delete
-                                        </button>
-
-                                    </form>
-
-                                </td>
-
-                            </tr>
-
-                            {% endfor %}
-
-                            {% if not expenses %}
-                            <tr>
-                                <td colspan="5" class="tx-empty">
-                                    No expenses found for this period.
-                                </td>
-                            </tr>
-                            {% endif %}
-
-                        </tbody>
-
-                    </table>
-                </div>
-
-            </div>
-
-            <!-- Category Breakdown -->
-            <div class="profile-section">
-
-                <h2 class="section-title">By Category</h2>
-
-                <div class="category-list">
-
+<!-- ✨ NEW: BUDGET MODAL FORM -->
+<div id="budgetModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Set Budget</h2>
+            <button class="close-btn" onclick="closeBudgetModal()">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('budget.set_budget_route') }}">
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category" required>
+                    <option value="">Select a category</option>
                     {% for cat in categories %}
-
-                    <div class="cat-row">
-
-                        <div class="cat-row-header">
-                            <span class="cat-row-name">{{ cat.name }}</span>
-                            <span class="cat-row-amount">₹{{ cat.amount }}</span>
-                        </div>
-
-                        <div class="cat-bar-track">
-                            <div class="cat-bar cat-bar--{{ cat.name | lower }}"
-                                 style="width: {{ cat.percent }}%">
-                            </div>
-                        </div>
-
-                    </div>
-
+                    <option value="{{ cat }}">{{ cat }}</option>
                     {% endfor %}
-
-                </div>
-
+                </select>
             </div>
+            <div class="form-group">
+                <label for="amount">Budget Amount (₹)</label>
+                <input type="number" id="amount" name="amount" step="0.01" min="0" 
+                       placeholder="Enter budget amount" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeBudgetModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Set Budget</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+        <!-- RIGHT: CHART -->
+        <div class="card">
+            <h3>Expense Overview</h3>
+
+            <canvas id="expenseChart"
+                data-labels='{{ chart_labels | tojson }}'
+                data-values='{{ chart_values | tojson }}'>
+            </canvas>
 
         </div>
 
     </div>
+
+    <!-- EXPENSE TABLE -->
+    <!-- EXPENSE TABLE -->
+<div class="card" style="margin-top: 15px;">
+
+    <h3>Recent Transactions</h3>
+
+    <div class="table">
+
+        {% if expenses %}
+            {% for e in expenses %}
+            <div class="row">
+
+                <div>
+                    <div class="main">{{ e['category'] }}</div>
+                    <div class="sub">{{ e['description'] if e['description'] else 'No description' }}</div>
+                </div>
+
+                <div class="amount">₹{{ e['amount'] }}</div>
+
+                <div class="date">{{ e['date'] }}</div>
+
+                <!-- ✨ NEW: ACTION BUTTONS -->
+                <div class="actions">
+                    <a href="{{ url_for('expenses.edit_expense', id=e['id']) }}" class="edit">✎ Edit</a>
+                    <form method="POST" action="{{ url_for('expenses.delete_expense', id=e['id']) }}" 
+                          style="display: inline; margin: 0;" 
+                          onsubmit="return confirm('Are you sure you want to delete this transaction?');">
+                        <button type="submit" class="delete">✕ Delete</button>
+                    </form>
+                </div>
+
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="text-align: center; color: #999; padding: 20px;">
+                No transactions yet. <a href="{{ url_for('expenses.add_expense') }}">Add your first expense</a>
+            </p>
+        {% endif %}
+
+    </div>
 </div>
+
+</div>
+
 {% endblock %}

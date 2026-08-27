@@ -58,10 +58,3 @@ def login():
         return redirect(url_for("profile"))
 
     return render_template("login.html")
-
-
-@auth_bp.route("/logout")
-def logout():
-    session.clear()
-    flash("You have been logged out.", "success")
-    return redirect(url_for("landing"))

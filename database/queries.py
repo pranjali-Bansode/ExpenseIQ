@@ -88,9 +88,9 @@ def get_user_by_id(user_id):
     }
 
 
-# =========================================================
-# 🔥 ANOMALY DETECTION FEATURE (UPDATED FUNCTION)
-# =========================================================
+# =======================
+# 🔥 ANOMALY DETECTION
+# =======================
 
 def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     date_clause, date_params = _build_date_filter(date_from, date_to)
@@ -98,7 +98,6 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
 
     conn = get_db()
 
-    # 1️⃣ Get category averages
     avg_rows = conn.execute(
         "SELECT category, AVG(amount) as avg_amount "
         "FROM expenses WHERE user_id = ? GROUP BY category",
@@ -109,7 +108,6 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
         row["category"]: row["avg_amount"] for row in avg_rows
     }
 
-    # 2️⃣ Get transactions
     rows = conn.execute(
         "SELECT id, date, description, category, amount "
         "FROM expenses "
@@ -127,7 +125,6 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
         category = row["category"]
         avg = category_avg.get(category, 0)
 
-        # 🔥 anomaly logic
         is_anomaly = avg > 0 and amount > (2 * avg)
 
         result.append({
@@ -138,11 +135,6 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
             "amount": "{:,.2f}".format(amount),
             "is_anomaly": is_anomaly
         })
-
-    # ✅ DEBUG (safe and correct)
-    print("ANOMALY DATA:")
-    for r in result:
-        print(r["description"], r["amount"], r["is_anomaly"])
 
     return result
 
@@ -205,3 +197,80 @@ def get_category_breakdown(user_id, date_from=None, date_to=None):
         }
         for r, pct in zip(rows, pcts)
     ]
+
+
+# =======================
+# 💰 BUDGET FUNCTIONS
+# =======================
+
+def set_budget(user_id, category, amount, month):
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO budgets (user_id, category, amount, month)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, category, month)
+        DO UPDATE SET amount = excluded.amount
+        """,
+        (user_id, category, amount, month),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_budget(user_id, category, month):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT amount FROM budgets WHERE user_id=? AND category=? AND month=?",
+        (user_id, category, month),
+    ).fetchone()
+    conn.close()
+    return row["amount"] if row else None
+
+def get_all_budgets(user_id, month):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT category, amount FROM budgets WHERE user_id=? AND month=?",
+        (user_id, month),
+    ).fetchall()
+    conn.close()
+
+    return {row["category"]: row["amount"] for row in rows}
+
+def get_total_expense_for_category(user_id, category, month):
+    conn = get_db()
+    row = conn.execute(
+        """
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM expenses
+        WHERE user_id=? AND category=? AND strftime('%Y-%m', date)=?
+        """,
+        (user_id, category, month),
+    ).fetchone()
+    conn.close()
+    return row["total"]
+
+def get_user_budgets(user_id):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT category, amount, month FROM budgets WHERE user_id=? ORDER BY month DESC",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+
+    return [
+        {
+            "category": r["category"],
+            "amount": r["amount"],
+            "month": r["month"]
+        }
+        for r in rows
+    ]
+def delete_budget(user_id, category, month):
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM budgets WHERE user_id=? AND category=? AND month=?",
+        (user_id, category, month),
+    )
+    conn.commit()
+    conn.close()
