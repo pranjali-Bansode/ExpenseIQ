@@ -161,9 +161,14 @@
             <div class="row">
 
                 <div>
-                    <div class="main">{{ e['category'] }}</div>
-                    <div class="sub">{{ e['description'] if e['description'] else 'No description' }}</div>
-                </div>
+    <div class="main">
+        {{ e['category'] }}
+        {% if e['id'] in anomaly_ids %}
+        <span class="anomaly-tag" title="Unusually high compared to your average" style="background:#fff3cd; color:#856404; font-size:11px; padding:2px 6px; border-radius:10px; margin-left:6px;">⚠ Unusual</span>
+        {% endif %}
+    </div>
+    <div class="sub">{{ e['description'] if e['description'] else 'No description' }}</div>
+</div>
 
                 <div class="amount">₹{{ e['amount'] }}</div>
 

@@ -7,7 +7,8 @@ from database.queries import (
     update_expense,
     delete_expense_by_id,
     get_budget,
-    get_total_expense_for_category
+    get_total_expense_for_category,
+    get_category_average
 )
 
 expense_bp = Blueprint('expenses', __name__)
@@ -77,6 +78,10 @@ def add_expense():
                 form=request.form
             )
 
+        # ---------------- ANOMALY CHECK (before insert) ---------------- #
+        avg_amount = get_category_average(session["user_id"], category)
+        is_anomaly = avg_amount > 0 and amount > (2 * avg_amount)
+
         # ---------------- INSERT ---------------- #
         insert_expense(session["user_id"], amount, category, expense_date, description)
 
@@ -86,11 +91,18 @@ def add_expense():
         budget = get_budget(session["user_id"], category, month)
         total_spent = get_total_expense_for_category(session["user_id"], category, month)
 
+        if is_anomaly:
+            flash(
+                f"⚠️ This ₹{amount:.2f} {category} expense is more than double "
+                f"your usual ₹{avg_amount:.2f} average for this category.",
+                "warning"
+            )
+
         if budget:
             if total_spent >= budget:
-                flash(f"ЁЯЪи Budget exceeded for {category}!", "error")
+                flash(f"🚨 Budget exceeded for {category}!", "error")
             elif total_spent >= 0.8 * budget:
-                flash(f"тЪая╕П You have used 80% of your {category} budget", "warning")
+                flash(f"⚠️ You have used 80% of your {category} budget", "warning")
 
         flash("Expense added successfully.", "success")
         return redirect(url_for("profile"))

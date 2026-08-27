@@ -56,6 +56,16 @@ def insert_expense(user_id, amount, category, expense_date, description):
     conn.close()
     return expense_id
 
+def get_category_average(user_id, category, exclude_expense_id=None):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT AVG(amount) as avg_amount FROM expenses "
+        "WHERE user_id = ? AND category = ?",
+        (user_id, category),
+    ).fetchone()
+    conn.close()
+    return row["avg_amount"] or 0
+
 
 def _build_date_filter(date_from, date_to):
     if date_from and date_to:

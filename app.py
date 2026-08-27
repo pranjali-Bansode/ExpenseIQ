@@ -111,6 +111,25 @@ def profile():
         LIMIT 5
     """, (session["user_id"],)).fetchall()
 
+      
+          # ANOMALY CHECK FOR RECENT TRANSACTIONS
+    avg_rows = conn.execute("""
+        SELECT category, AVG(amount) as avg_amount
+        FROM expenses
+        WHERE user_id = ?
+        GROUP BY category
+    """, (session["user_id"],)).fetchall()
+
+    category_avg = {row["category"]: row["avg_amount"] for row in avg_rows}
+
+    anomaly_ids = {
+        e["id"] for e in expenses
+        if category_avg.get(e["category"], 0) > 0
+        and e["amount"] > 2 * category_avg[e["category"]]
+    }
+
+
+    
     # CATEGORY BREAKDOWN
     category_data = conn.execute("""
         SELECT category, SUM(amount) as total
@@ -143,7 +162,8 @@ def profile():
         budgets=budgets,
         categories=CATEGORIES,
         chart_labels=chart_labels,
-        chart_values=chart_values
+        chart_values=chart_values,
+        anomaly_ids=anomaly_ids
     )
 
 
