@@ -1,0 +1,471 @@
+/* ====================== TRENDS PAGE STYLING ====================== */
+
+.trends-page {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    min-height: 100vh;
+}
+
+.trends-header {
+    margin-bottom: 3rem;
+    text-align: center;
+}
+
+.trends-header h1 {
+    font-size: 2.5rem;
+    color: #1a202c;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.trends-header p {
+    font-size: 1.1rem;
+    color: #6b7280;
+}
+
+.trends-container {
+    display: grid;
+    gap: 2rem;
+}
+
+/* ====================== SECTIONS ====================== */
+
+.trends-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    border: 1px solid #e5e7eb;
+}
+
+.section-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.section-header h2 {
+    font-size: 1.5rem;
+    color: #1a202c;
+    margin-bottom: 0.3rem;
+}
+
+.section-header .subtitle {
+    color: #9ca3af;
+    font-size: 0.95rem;
+}
+
+/* ====================== EMPTY STATE ====================== */
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* ====================== MONTH-OVER-MONTH COMPARISON ====================== */
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.comparison-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #f3f4f6 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.comparison-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
+}
+
+.comparison-category {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.comparison-metrics {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.metric {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.metric .label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.3rem;
+}
+
+.metric .value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.comparison-change {
+    display: flex;
+    justify-content: center;
+}
+
+.change-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.change-badge.increase {
+    background-color: #fecaca;
+    color: #991b1b;
+}
+
+.change-badge.decrease {
+    background-color: #bbf7d0;
+    color: #166534;
+}
+
+.change-badge.neutral {
+    background-color: #f3e8ff;
+    color: #6b21a8;
+}
+
+/* ====================== VELOCITY SECTION ====================== */
+
+.velocity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.velocity-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    transition: transform 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.velocity-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.velocity-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.velocity-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.velocity-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* ====================== CATEGORY TREND ====================== */
+
+.trend-selector {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.trend-selector label {
+    font-weight: 600;
+    color: #374151;
+}
+
+.trend-selector select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+    min-width: 200px;
+}
+
+.trend-selector select:hover {
+    border-color: #9ca3af;
+}
+
+.trend-selector select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.trend-chart-container {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    min-height: 350px;
+}
+
+.trend-stats {
+    margin-top: 2rem;
+}
+
+.trend-table {
+    overflow-x: auto;
+}
+
+.trend-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.trend-table th {
+    background-color: #f3f4f6;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 0.9rem;
+}
+
+.trend-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.trend-table tr:hover {
+    background-color: #f9fafb;
+}
+
+.trend-table tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+/* ====================== MONTHLY TRENDS ====================== */
+
+.monthly-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.month-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.month-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.month-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    font-weight: 700;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.month-categories {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.9rem;
+}
+
+.category-item:last-child {
+    border-bottom: none;
+}
+
+.cat-name {
+    font-weight: 600;
+    color: #374151;
+}
+
+.cat-value {
+    color: #667eea;
+    font-weight: 700;
+}
+
+.cat-count {
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+
+/* ====================== RESPONSIVE DESIGN ====================== */
+
+@media (max-width: 768px) {
+    .trends-page {
+        padding: 1rem;
+    }
+
+    .trends-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .trends-header p {
+        font-size: 1rem;
+    }
+
+    .trends-section {
+        padding: 1.5rem;
+    }
+
+    .comparison-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .velocity-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .velocity-card {
+        padding: 1.5rem;
+    }
+
+    .velocity-value {
+        font-size: 1.25rem;
+    }
+
+    .trend-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .trend-selector select {
+        width: 100%;
+    }
+
+    .trend-chart-container {
+        padding: 1rem;
+        min-height: 300px;
+    }
+
+    .monthly-breakdown {
+        grid-template-columns: 1fr;
+    }
+
+    .trend-table {
+        font-size: 0.85rem;
+    }
+
+    .trend-table th,
+    .trend-table td {
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .trends-page {
+        padding: 0.75rem;
+    }
+
+    .trends-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .trends-section {
+        padding: 1rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .velocity-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .velocity-card {
+        padding: 1rem;
+    }
+
+    .comparison-card {
+        padding: 1rem;
+    }
+
+    .metric .value {
+        font-size: 1rem;
+    }
+
+    .change-badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    .trend-table {
+        font-size: 0.75rem;
+    }
+
+    .trend-table th,
+    .trend-table td {
+        padding: 0.5rem 0.25rem;
+    }
+}
+
+/* ====================== PRINT STYLES ====================== */
+
+@media print {
+    .trends-page {
+        background: none;
+        padding: 0;
+    }
+
+    .trends-section {
+        page-break-inside: avoid;
+        box-shadow: none;
+    }
+
+    .velocity-card {
+        background: #f3f4f6 !important;
+        color: #1a202c !important;
+    }
+}

@@ -4,6 +4,7 @@ from database.db import init_db, get_db, seed_db
 from routes.auth import auth_bp
 from routes.expenses import expense_bp
 from routes.budget import budget_bp
+from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify
 
 from database.queries import (
     get_recent_transactions,
@@ -81,6 +82,119 @@ def analytics():
 
 
 # =======================
+# 📊 EXPENSE TRENDS - app.py MODIFICATIONS
+# =======================
+
+# ========================
+# STEP 1: UPDATE IMPORTS (Lines 1-12)
+# ========================
+# REPLACE THIS:
+"""
+from flask import Flask, render_template, session, redirect, url_for, flash
+from database.db import init_db, get_db, seed_db
+
+from routes.auth import auth_bp
+from routes.expenses import expense_bp
+from routes.budget import budget_bp
+
+from database.queries import (
+    get_recent_transactions,
+    get_summary_stats,
+    get_category_breakdown
+)
+"""
+
+# WITH THIS:
+from flask import Flask, render_template, session, redirect, url_for, flash, request
+from database.db import init_db, get_db, seed_db
+
+from routes.auth import auth_bp
+from routes.expenses import expense_bp
+from routes.budget import budget_bp
+
+from database.queries import (
+    get_recent_transactions,
+    get_summary_stats,
+    get_category_breakdown,
+    get_monthly_trend_data,
+    get_month_over_month_comparison,
+    get_category_trend_over_time,
+    get_spending_velocity
+)
+
+# ========================
+# STEP 2: ADD NEW ROUTE (After line 81, before /profile route)
+# ========================
+# ADD THIS COMPLETE ROUTE:
+
+@app.route("/trends")
+def trends():
+    """Expense Trends & Comparison page"""
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    
+    from datetime import datetime, timedelta
+    
+    # Get current and previous month
+    today = datetime.now()
+    current_month = today.strftime("%Y-%m")
+    previous_month = (today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    
+    # Get comparison data
+    comparison = get_month_over_month_comparison(
+        session["user_id"], 
+        current_month, 
+        previous_month
+    )
+    
+    # Get monthly trends
+    trend_data = get_monthly_trend_data(session["user_id"], months=6)
+    
+    # Get spending velocity
+    velocity = get_spending_velocity(session["user_id"])
+    
+    # Get selected category trend (default to first category if available)
+    selected_category = request.args.get("category", "Food")
+    category_trend = get_category_trend_over_time(
+        session["user_id"], 
+        selected_category, 
+        months=6
+    )
+    
+    # Get unique categories for dropdown
+    all_categories = list(set(
+        cat for month_cats in trend_data.values() 
+        for cat in [c["category"] for c in month_cats]
+    ))
+    
+    return render_template(
+        "trends.html",
+        comparison=comparison,
+        trend_data=trend_data,
+        velocity=velocity,
+        category_trend=category_trend,
+        selected_category=selected_category,
+        all_categories=sorted(all_categories),
+        current_month=current_month,
+        previous_month=previous_month
+    )
+
+
+@app.route("/api/trends/category-data")
+def trends_category_data():
+    """Returns category trend data as JSON for trends.js to fetch."""
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    category = request.args.get("category", "Food")
+    category_trend = get_category_trend_over_time(session["user_id"], category, months=6)
+
+    labels = [item["month"] for item in category_trend]
+    data = [float(item["total"].replace(",", "")) for item in category_trend]
+
+    return jsonify({"labels": labels, "data": data})
+
+# =======================
 # PROFILE DASHBOARD
 # =======================
 @app.route("/profile")
@@ -108,7 +222,7 @@ def profile():
         SELECT * FROM expenses
         WHERE user_id = ?
         ORDER BY date DESC
-        LIMIT 5
+        LIMIT 20
     """, (session["user_id"],)).fetchall()
 
       

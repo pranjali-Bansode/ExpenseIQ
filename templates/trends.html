@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Expense Trends — ExpenseIQ{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trends.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="trends-page">
+    <div class="trends-header">
+        <h1>Expense Trends & Comparison</h1>
+        <p>Analyze your spending patterns over time</p>
+    </div>
+
+    <div class="trends-container">
+        
+        <!-- ============== SECTION 1: Month-over-Month Comparison ============== -->
+        <section class="trends-section comparison-section">
+            <div class="section-header">
+                <h2> Month-over-Month Comparison</h2>
+                <p class="subtitle">{{ previous_month }} vs {{ current_month }}</p>
+            </div>
+
+            <div class="comparison-grid">
+                {% if comparison %}
+                    {% for item in comparison %}
+                    <div class="comparison-card">
+                        <div class="comparison-category">{{ item.category }}</div>
+                        
+                        <div class="comparison-metrics">
+                            <div class="metric">
+                                <span class="label">{{ previous_month }}</span>
+                                <span class="value">₹{{ item.previous_month }}</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">{{ current_month }}</span>
+                                <span class="value">₹{{ item.current_month }}</span>
+                            </div>
+                        </div>
+
+                        <div class="comparison-change">
+                            {% if item.percent_change > 0 %}
+                                <span class="change-badge increase">
+                                    📈 +{{ item.percent_change }}%
+                                </span>
+                            {% elif item.percent_change < 0 %}
+                                <span class="change-badge decrease">
+                                    📉 {{ item.percent_change }}%
+                                </span>
+                            {% else %}
+                                <span class="change-badge neutral">
+                                    ➡️ No Change
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No data available for comparison</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- ============== SECTION 2: Spending Velocity ============== -->
+        <section class="trends-section velocity-section">
+            <div class="section-header">
+                <h2> Spending Velocity (Last 30 Days)</h2>
+                <p class="subtitle">How fast are you spending?</p>
+            </div>
+
+            <div class="velocity-grid">
+                <div class="velocity-card">
+                    <div class="velocity-icon">💰</div>
+                    <div class="velocity-label">Total Spent</div>
+                    <div class="velocity-value">₹{{ velocity.total_spent_30_days }}</div>
+                </div>
+
+                <div class="velocity-card">
+                    <div class="velocity-icon">📅</div>
+                    <div class="velocity-label">Daily Average</div>
+                    <div class="velocity-value">₹{{ velocity.daily_average }}/day</div>
+                </div>
+
+                <div class="velocity-card">
+                    <div class="velocity-icon">📊</div>
+                    <div class="velocity-label">Transaction Count</div>
+                    <div class="velocity-value">{{ velocity.transaction_count }}</div>
+                </div>
+
+                <div class="velocity-card">
+                    <div class="velocity-icon">📌</div>
+                    <div class="velocity-label">Avg per Transaction</div>
+                    <div class="velocity-value">₹{{ velocity.avg_per_transaction }}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============== SECTION 3: Category Trend Analysis ============== -->
+        <section class="trends-section category-trend-section">
+            <div class="section-header">
+                <h2>Category Trend Analysis</h2>
+                <p class="subtitle">Spending pattern for selected category</p>
+            </div>
+
+            <div class="trend-selector">
+                <label for="category-select">Select Category:</label>
+                <select id="category-select" >
+                    {% for cat in all_categories %}
+                    <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>
+                        {{ cat }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="trend-chart-container">
+                <canvas id="categoryTrendChart" data-category="{{ selected_category }}"></canvas>
+            </div>
+
+            <div class="trend-stats">
+                {% if category_trend %}
+                    <div class="trend-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Total</th>
+                                    <th>Count</th>
+                                    <th>Avg</th>
+                                    <th>Max</th>
+                                    <th>Min</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in category_trend %}
+                                <tr>
+                                    <td><strong>{{ item.month }}</strong></td>
+                                    <td>₹{{ item.total }}</td>
+                                    <td>{{ item.count }}</td>
+                                    <td>₹{{ item.avg_amount }}</td>
+                                    <td>₹{{ item.max_amount }}</td>
+                                    <td>₹{{ item.min_amount }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>No data available for {{ selected_category }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- ============== SECTION 4: Overall Monthly Trends ============== -->
+        <section class="trends-section monthly-trends-section">
+            <div class="section-header">
+                <h2> Overall Monthly Trends</h2>
+                <p class="subtitle">Last 6 months overview</p>
+            </div>
+
+            <div class="monthly-breakdown">
+                {% if trend_data %}
+                    {% for month, categories in trend_data.items() %}
+                    <div class="month-card">
+                        <div class="month-title">{{ month }}</div>
+                        <div class="month-categories">
+                            {% for cat in categories %}
+                            <div class="category-item">
+                                <span class="cat-name">{{ cat.category }}</span>
+                                <span class="cat-value">₹{{ cat.monthly_total }}</span>
+                                <span class="cat-count">({{ cat.transaction_count }} tx)</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No historical data available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+    </div>
+</div>
+
+
+
+
+
+
+<!-- Then load external JS -->
+<script src="{{ url_for('static', filename='js/trends.js') }}"></script>
+
+{% endblock %}

@@ -41,11 +41,17 @@
                     Dashboard
                 </a>
 
-                <!-- Analytics (SAFE: only enable when route exists) -->
-                <!-- <a href="{{ url_for('analytics') }}"
+                 <!-- Analytics -->
+                <a href="{{ url_for('analytics') }}"
                    class="{{ 'nav-link-active' if request.endpoint == 'analytics' else '' }}">
                     Analytics
-                </a> -->
+                </a>
+
+                <!-- Trends (NEW) -->
+                <a href="{{ url_for('trends') }}"
+                   class="{{ 'nav-link-active' if request.endpoint == 'trends' else '' }}">
+                     Trends
+                </a>
 
                 <!-- Logout -->
                 <a href="{{ url_for('logout') }}">

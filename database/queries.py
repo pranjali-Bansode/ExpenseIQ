@@ -284,3 +284,169 @@ def delete_budget(user_id, category, month):
     )
     conn.commit()
     conn.close()
+
+    # =======================
+# 📊 EXPENSE TRENDS - ADD TO database/queries.py
+# Location: Add at the END of database/queries.py (after line 286)
+# =======================
+
+def get_monthly_trend_data(user_id, months=6):
+    """Get last N months of spending data grouped by month and category"""
+    conn = get_db()
+    
+    rows = conn.execute("""
+        SELECT 
+            strftime('%Y-%m', date) AS month,
+            category,
+            SUM(amount) as monthly_total,
+            COUNT(*) as transaction_count,
+            AVG(amount) as avg_amount
+        FROM expenses
+        WHERE user_id = ?
+        GROUP BY strftime('%Y-%m', date), category
+        ORDER BY month DESC
+        LIMIT ?
+    """, (user_id, months * 10)).fetchall()
+    
+    conn.close()
+    
+    # Organize by month
+    trend_data = {}
+    for row in rows:
+        month = row["month"]
+        if month not in trend_data:
+            trend_data[month] = []
+        
+        trend_data[month].append({
+            "category": row["category"],
+            "monthly_total": "{:,.2f}".format(row["monthly_total"]),
+            "transaction_count": row["transaction_count"],
+            "avg_amount": "{:,.2f}".format(row["avg_amount"])
+        })
+    
+    return trend_data
+
+
+def get_month_over_month_comparison(user_id, current_month, previous_month):
+    """Compare spending between two months"""
+    conn = get_db()
+    
+    # Current month data
+    current_data = conn.execute("""
+        SELECT 
+            category,
+            SUM(amount) as total
+        FROM expenses
+        WHERE user_id = ? AND strftime('%Y-%m', date) = ?
+        GROUP BY category
+    """, (user_id, current_month)).fetchall()
+    
+    # Previous month data
+    previous_data = conn.execute("""
+        SELECT 
+            category,
+            SUM(amount) as total
+        FROM expenses
+        WHERE user_id = ? AND strftime('%Y-%m', date) = ?
+        GROUP BY category
+    """, (user_id, previous_month)).fetchall()
+    
+    conn.close()
+    
+    # Create dictionaries for easy lookup
+    current_dict = {row["category"]: row["total"] for row in current_data}
+    previous_dict = {row["category"]: row["total"] for row in previous_data}
+    
+    # Get all categories
+    all_categories = set(current_dict.keys()) | set(previous_dict.keys())
+    
+    # Calculate comparison
+    comparison = []
+    for category in sorted(all_categories):
+        curr = current_dict.get(category, 0)
+        prev = previous_dict.get(category, 0)
+        
+        # Calculate percentage change
+        if prev > 0:
+            percent_change = ((curr - prev) / prev) * 100
+        else:
+            percent_change = 100 if curr > 0 else 0
+        
+        comparison.append({
+            "category": category,
+            "current_month": "{:,.2f}".format(curr),
+            "previous_month": "{:,.2f}".format(prev),
+            "percent_change": round(percent_change, 2),
+            "status": "increase" if percent_change > 0 else "decrease"
+        })
+    
+    return comparison
+
+
+def get_category_trend_over_time(user_id, category, months=6):
+    """Get spending trend for a specific category over time"""
+    conn = get_db()
+    
+    rows = conn.execute("""
+        SELECT 
+            strftime('%Y-%m', date) AS month,
+            SUM(amount) as total,
+            COUNT(*) as count,
+            AVG(amount) as avg_amount,
+            MAX(amount) as max_amount,
+            MIN(amount) as min_amount
+        FROM expenses
+        WHERE user_id = ? AND category = ?
+        GROUP BY strftime('%Y-%m', date)
+        ORDER BY month DESC
+        LIMIT ?
+    """, (user_id, category, months)).fetchall()
+    
+    conn.close()
+    
+    trend = []
+    for row in rows:
+        trend.append({
+            "month": row["month"],
+            "total": "{:,.2f}".format(row["total"]),
+            "count": row["count"],
+            "avg_amount": "{:,.2f}".format(row["avg_amount"]),
+            "max_amount": "{:,.2f}".format(row["max_amount"]),
+            "min_amount": "{:,.2f}".format(row["min_amount"])
+        })
+    
+    return trend
+
+
+def get_spending_velocity(user_id):
+    """Calculate how fast user is spending (daily average)"""
+    conn = get_db()
+    
+    # Get data for last 30 days
+    result = conn.execute("""
+        SELECT 
+            COUNT(DISTINCT DATE(date)) as days_with_spending,
+            SUM(amount) as total_spent,
+            COUNT(*) as transaction_count,
+            AVG(amount) as avg_per_transaction
+        FROM expenses
+        WHERE user_id = ? AND date >= DATE('now', '-30 days')
+    """, (user_id,)).fetchone()
+    
+    conn.close()
+    
+    days_with_spending = result["days_with_spending"] or 0
+    total_spent = result["total_spent"] or 0
+    transaction_count = result["transaction_count"] or 0
+    avg_per_transaction = result["avg_per_transaction"] or 0
+    
+    # Calculate daily average
+    daily_avg = total_spent / 30 if total_spent > 0 else 0
+    
+    return {
+        "total_spent_30_days": "{:,.2f}".format(total_spent),
+        "daily_average": "{:,.2f}".format(daily_avg),
+        "days_with_spending": days_with_spending,
+        "transaction_count": transaction_count,
+        "avg_per_transaction": "{:,.2f}".format(avg_per_transaction)
+    }
