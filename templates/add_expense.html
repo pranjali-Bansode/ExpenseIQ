@@ -15,9 +15,19 @@
             <p class="auth-subtitle">Record a new transaction</p>
         </div>
 
+                <!-- ===== RECEIPT UPLOAD & OCR ===== -->
+        <div class="auth-card receipt-upload-card">
+            <label for="receiptFile" class="receipt-upload-label">
+                📷 Scan a Receipt (D-Mart, Medical, or any Bill)
+            </label>
+            <input type="file" id="receiptFile" class="receipt-file-input"
+                   accept="image/*" capture="environment">
+            <button type="button" id="scanReceiptBtn" class="btn-scan">Scan & Auto-fill</button>
+            <p id="scanStatus" class="form-help"></p>
+        </div>
+
         <div class="auth-card">
             <form method="POST" action="{{ url_for('expenses.add_expense') }}">
-
                 <div class="form-group">
                     <label for="amount">Amount (₹)</label>
                     <input type="number" id="amount" name="amount"
@@ -63,6 +73,10 @@
             <a href="{{ url_for('profile') }}">← Back to profile</a>
         </p>
 
-    </div>
+       </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/receipt_scan.js') }}"></script>
 {% endblock %}

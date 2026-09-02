@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, abort, jsonify
 from datetime import date, datetime
 
 from database.queries import (
@@ -10,6 +10,7 @@ from database.queries import (
     get_total_expense_for_category,
     get_category_average
 )
+from services.ocr_service import parse_receipt, allowed_file
 
 
 from database.queries import (
@@ -131,7 +132,40 @@ def add_expense():
         today=today,
         form={}
     )
+@expense_bp.route("/expenses/scan-receipt", methods=["POST"])
+def scan_receipt():
+    """
+    Receipt upload & OCR.
+    Accepts an uploaded receipt image (D-Mart bill, medical/pharmacy bill,
+    restaurant bill, etc.), runs OCR on it, and returns the extracted
+    amount / date / category / description as JSON so the Add Expense
+    form (add_expense.html) can auto-fill itself via receipt_scan.js.
+    """
+    if not session.get("user_id"):
+        return jsonify({"error": "unauthorized"}), 401
 
+    file = request.files.get("receipt")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file uploaded."}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Unsupported file type. Use JPG, PNG or WEBP."}), 400
+
+    try:
+        result = parse_receipt(file)
+    except Exception as e:
+        return jsonify({"error": f"Could not read this receipt ({str(e)})."}), 500
+
+    if result["category"] not in CATEGORIES:
+        result["category"] = "Other"
+
+    if result["amount"] is None:
+        return jsonify({
+            "error": "Couldn't detect an amount on this receipt — please check the fields.",
+            **result
+        }), 200
+
+    return jsonify(result), 200
 
 @expense_bp.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
