@@ -99,6 +99,39 @@ def get_user_by_id(user_id):
 
 
 # =======================
+# 📄 EXPENSE REPORT (full, unlimited — used by PDF export)
+# =======================
+
+def get_all_expenses(user_id, date_from=None, date_to=None):
+    """Return every expense for a user (optionally date-filtered), oldest limit removed —
+    used for the exportable PDF report rather than dashboard previews."""
+    date_clause, date_params = _build_date_filter(date_from, date_to)
+    params = [user_id] + date_params
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, date, description, category, amount "
+        "FROM expenses "
+        "WHERE user_id = ? " + date_clause +
+        " ORDER BY date DESC, id DESC",
+        params,
+    ).fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": row["id"],
+            "date": row["date"],
+            "date_display": datetime.strptime(row["date"], "%Y-%m-%d").strftime("%d %b %Y"),
+            "description": row["description"] or "—",
+            "category": row["category"],
+            "amount": row["amount"],
+        }
+        for row in rows
+    ]
+
+
+# =======================
 # 🔥 ANOMALY DETECTION
 # =======================
 

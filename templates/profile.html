@@ -32,6 +32,9 @@
             + Add Expense
         </a>
          <a href="{{ url_for('expenses.list_recurring_expenses') }}" class="primary-btn"> Recurring Expenses</a>
+         <a href="{{ url_for('export_report') }}" class="primary-btn" style="background:#3a5a8a;">
+    ⬇ Download Report
+</a>
         <!-- LOGOUT -->
         <a href="{{ url_for('logout') }}" class="primary-btn" style="background:#ff4d4f;">
             Logout

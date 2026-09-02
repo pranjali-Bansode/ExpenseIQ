@@ -13,6 +13,9 @@ from database.queries import (
 )
 from database.queries import process_recurring_expenses
 from database.queries import get_spending_alerts
+from database.queries import get_all_expenses, get_all_budgets, get_user_by_id
+from services.report_service import generate_expense_report_pdf
+from flask import send_file
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
@@ -81,6 +84,46 @@ def analytics():
         category_breakdown=category_breakdown,
         date_from=date_from,
         date_to=date_to
+    )
+
+
+# =======================
+# 📄 EXPORT REPORT (PDF)
+# =======================
+@app.route("/export/report")
+def export_report():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    from datetime import datetime as _datetime
+
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+
+    user = get_user_by_id(session["user_id"])
+    expenses = get_all_expenses(session["user_id"], date_from=date_from, date_to=date_to)
+    stats = get_summary_stats(session["user_id"], date_from=date_from, date_to=date_to)
+    category_breakdown = get_category_breakdown(session["user_id"], date_from=date_from, date_to=date_to)
+
+    current_month = _datetime.now().strftime("%Y-%m")
+    budgets = get_all_budgets(session["user_id"], current_month)
+
+    pdf_buffer = generate_expense_report_pdf(
+        user_name=user["name"] if user else "User",
+        expenses=expenses,
+        stats=stats,
+        category_breakdown=category_breakdown,
+        budgets=budgets,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    filename = f"expenseiq_report_{_datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename,
     )
 
 
