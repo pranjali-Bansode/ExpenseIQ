@@ -20,3 +20,286 @@
     color: var(--ink-faint);
     font-weight: 400;
 }
+/* ===== SECTION LAYOUT ===== */
+.auth-section {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    background: #f6f8f9;
+    min-height: 100vh;
+}
+
+/* ===== CONTAINER ===== */
+.auth-container {
+    width: 100%;
+    max-width: 520px;
+}
+
+/* ===== HEADER ===== */
+.auth-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.auth-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #222;
+}
+
+.auth-subtitle {
+    font-size: 0.95rem;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* ===== CARD ===== */
+.auth-card {
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+}
+
+/* ===== FORM ===== */
+.form-group {
+    margin-bottom: 18px;
+}
+
+/* ===== LABEL ===== */
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+/* ===== INPUTS ===== */
+.form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: 0.2s;
+}
+
+/* Focus effect */
+.form-input:focus {
+    border-color: #20c997;
+    box-shadow: 0 0 0 2px rgba(32, 201, 151, 0.15);
+}
+
+/* ===== SELECT ===== */
+.form-select {
+    appearance: none;
+    background: #fff;
+    cursor: pointer;
+
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b6b' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+
+    padding-right: 35px;
+}
+
+/* ===== TEXTAREA ===== */
+.form-textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* ===== HELP TEXT ===== */
+.form-help {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* ===== REQUIRED / OPTIONAL ===== */
+.field-required {
+    color: #e63946;
+}
+
+.field-optional {
+    color: #aaa;
+    font-size: 0.8rem;
+}
+
+/* ===== BUTTON ===== */
+.btn-submit {
+    width: 100%;
+    background: #20c997;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+/* Hover */
+.btn-submit:hover {
+    background: #17b38a;
+}
+
+/* ===== BACK LINK ===== */
+.auth-switch {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.auth-switch a {
+    font-size: 0.9rem;
+    color: #20c997;
+    text-decoration: none;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}/* ===== SECTION LAYOUT ===== */
+.auth-section {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    background: #f6f8f9;
+    min-height: 100vh;
+}
+
+/* ===== CONTAINER ===== */
+.auth-container {
+    width: 100%;
+    max-width: 520px;
+}
+
+/* ===== HEADER ===== */
+.auth-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.auth-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #222;
+}
+
+.auth-subtitle {
+    font-size: 0.95rem;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* ===== CARD ===== */
+.auth-card {
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+}
+
+/* ===== FORM ===== */
+.form-group {
+    margin-bottom: 18px;
+}
+
+/* ===== LABEL ===== */
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+/* ===== INPUTS ===== */
+.form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: 0.2s;
+}
+
+/* Focus effect */
+.form-input:focus {
+    border-color: #20c997;
+    box-shadow: 0 0 0 2px rgba(32, 201, 151, 0.15);
+}
+
+/* ===== SELECT ===== */
+.form-select {
+    appearance: none;
+    background: #fff;
+    cursor: pointer;
+
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b6b' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+
+    padding-right: 35px;
+}
+
+/* ===== TEXTAREA ===== */
+.form-textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* ===== HELP TEXT ===== */
+.form-help {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* ===== REQUIRED / OPTIONAL ===== */
+.field-required {
+    color: #e63946;
+}
+
+.field-optional {
+    color: #aaa;
+    font-size: 0.8rem;
+}
+
+/* ===== BUTTON ===== */
+.btn-submit {
+    width: 100%;
+    background: #20c997;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+/* Hover */
+.btn-submit:hover {
+    background: #17b38a;
+}
+
+/* ===== BACK LINK ===== */
+.auth-switch {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.auth-switch a {
+    font-size: 0.9rem;
+    color: #20c997;
+    text-decoration: none;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}

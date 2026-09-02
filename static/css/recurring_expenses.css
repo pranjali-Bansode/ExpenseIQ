@@ -1,0 +1,265 @@
+/* ===== PAGE ===== */
+.recurring-section {
+    padding: 30px 20px;
+    background: #f5f7f9;
+    min-height: 100vh;
+}
+
+.recurring-inner {
+    max-width: 1000px;
+    margin: auto;
+}
+
+/* ===== HEADER ===== */
+.recurring-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.recurring-header h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+/* BUTTON */
+.btn-add-recurring {
+    background: #20c997;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.2s;
+}
+.btn-add-recurring:hover {
+    background: #17b38a;
+}
+
+/* ===== SUMMARY ===== */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 25px;
+}
+
+.summary-card {
+    background: #fff;
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    transition: 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+}
+
+.summary-card h3 {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.summary-card .amount {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.summary-card.total {
+    background: linear-gradient(135deg, #20c997, #17b38a);
+    color: white;
+    border: none;
+}
+
+/* ===== LIST ===== */
+.recurring-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* ===== CARD ===== */
+.recurring-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 20px;
+
+    background: #fff;
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 1px solid #eee;
+    transition: 0.2s;
+}
+
+.recurring-item:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+/* ===== LEFT ===== */
+.recurring-details h3 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.recurring-header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* BADGE */
+.badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.badge-monthly {
+    background: #e6f9f2;
+    color: #159d74;
+}
+
+/* DESCRIPTION */
+.recurring-description {
+    font-size: 0.85rem;
+    color: #777;
+    margin: 6px 0;
+}
+
+/* META */
+/* ===== META AS MINI CARDS ===== */
+.recurring-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* each field becomes a card */
+.recurring-meta span {
+    background: #f8fafc;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    color: #444;
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    transition: 0.2s ease;
+}
+
+/* hover effect */
+.recurring-meta span:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+@media (max-width: 768px) {
+    .recurring-meta {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .recurring-meta {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== AMOUNT ===== */
+.recurring-amount-group {
+    text-align: right;
+}
+
+.recurring-amount {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.recurring-amount-note {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+/* ===== ACTIONS ===== */
+.recurring-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* BUTTONS */
+.btn-small {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+}
+
+/* EDIT */
+.btn-edit {
+    background: #e7f0ff;
+    color: #2c6bed;
+}
+
+/* DELETE */
+.btn-delete {
+    background: #ffe5e5;
+    color: #d63031;
+}
+
+/* ===== EMPTY ===== */
+.empty-state {
+    text-align: center;
+    padding: 50px;
+    background: #fff;
+    border-radius: 12px;
+}
+
+.empty-state h2 {
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: #777;
+}
+
+/* ===== BACK LINK ===== */
+.back-link {
+    display: inline-block;
+    margin-top: 20px;
+    color: #20c997;
+    text-decoration: none;
+}
+.back-link:hover {
+    text-decoration: underline;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recurring-item {
+        grid-template-columns: 1fr;
+    }
+
+    .recurring-amount-group {
+        text-align: left;
+    }
+
+    .recurring-actions {
+        flex-direction: row;
+    }
+}

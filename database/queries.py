@@ -450,3 +450,205 @@ def get_spending_velocity(user_id):
         "transaction_count": transaction_count,
         "avg_per_transaction": "{:,.2f}".format(avg_per_transaction)
     }
+# =======================
+# 🔄 RECURRING EXPENSES
+# =======================
+
+def create_recurring_expense(user_id, amount, category, description, frequency, start_date, end_date=None):
+    """Create a new recurring expense"""
+    from datetime import datetime, timedelta
+    
+    conn = get_db()
+    
+    # Calculate next due date based on frequency
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    if frequency == "daily":
+        next_due = start + timedelta(days=1)
+    elif frequency == "weekly":
+        next_due = start + timedelta(weeks=1)
+    elif frequency == "biweekly":
+        next_due = start + timedelta(weeks=2)
+    elif frequency == "monthly":
+        if start.month == 12:
+            next_due = start.replace(year=start.year + 1, month=1)
+        else:
+            next_due = start.replace(month=start.month + 1)
+    elif frequency == "quarterly":
+        month = start.month + 3
+        year = start.year
+        if month > 12:
+            month -= 12
+            year += 1
+        next_due = start.replace(month=month, year=year)
+    elif frequency == "yearly":
+        next_due = start.replace(year=start.year + 1)
+    else:
+        next_due = start
+    
+    cursor = conn.execute(
+        """INSERT INTO recurring_expenses 
+           (user_id, amount, category, description, frequency, start_date, end_date, next_due_date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, amount, category, description, frequency, start_date, end_date, next_due.strftime("%Y-%m-%d"))
+    )
+    conn.commit()
+    recurring_id = cursor.lastrowid
+    conn.close()
+    return recurring_id
+
+
+def get_recurring_expenses(user_id, only_active=True):
+    """Get all recurring expenses for a user"""
+    conn = get_db()
+    
+    query = "SELECT * FROM recurring_expenses WHERE user_id = ?"
+    params = [user_id]
+    
+    if only_active:
+        query += " AND is_active = 1"
+    
+    query += " ORDER BY next_due_date ASC"
+    
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+
+
+def get_recurring_expense_by_id(recurring_id, user_id):
+    """Get a specific recurring expense"""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM recurring_expenses WHERE id = ? AND user_id = ?",
+        (recurring_id, user_id)
+    ).fetchone()
+    conn.close()
+    
+    return dict(row) if row else None
+
+
+def update_recurring_expense(recurring_id, user_id, amount, category, description, frequency, end_date=None):
+    """Update a recurring expense"""
+    conn = get_db()
+    conn.execute(
+        """UPDATE recurring_expenses 
+           SET amount = ?, category = ?, description = ?, frequency = ?, end_date = ?, updated_at = datetime('now')
+           WHERE id = ? AND user_id = ?""",
+        (amount, category, description, frequency, end_date, recurring_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_recurring_expense(recurring_id, user_id):
+    """Delete (deactivate) a recurring expense"""
+    conn = get_db()
+    conn.execute(
+        "UPDATE recurring_expenses SET is_active = 0, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+        (recurring_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def process_recurring_expenses():
+    """Generate expense instances for due recurring expenses (run daily)"""
+    from datetime import datetime, timedelta
+    
+    conn = get_db()
+    
+    # Get all active recurring expenses that are due today or earlier
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    recurring_expenses = conn.execute(
+        """SELECT * FROM recurring_expenses 
+           WHERE is_active = 1 
+           AND next_due_date <= ?
+           AND (end_date IS NULL OR end_date >= ?)""",
+        (today, today)
+    ).fetchall()
+    
+    for rec in recurring_expenses:
+        # Insert new expense
+        cursor = conn.execute(
+            """INSERT INTO expenses (user_id, amount, category, date, description)
+               VALUES (?, ?, ?, ?, ?)""",
+            (rec["user_id"], rec["amount"], rec["category"], today, rec["description"])
+        )
+        
+        # Link to recurring expense
+        expense_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO recurring_expense_instances (recurring_expense_id, expense_id) VALUES (?, ?)",
+            (rec["id"], expense_id)
+        )
+        
+        # Calculate next due date
+        start = datetime.strptime(rec["next_due_date"], "%Y-%m-%d")
+        frequency = rec["frequency"]
+        
+        if frequency == "daily":
+            next_due = start + timedelta(days=1)
+        elif frequency == "weekly":
+            next_due = start + timedelta(weeks=1)
+        elif frequency == "biweekly":
+            next_due = start + timedelta(weeks=2)
+        elif frequency == "monthly":
+            if start.month == 12:
+                next_due = start.replace(year=start.year + 1, month=1)
+            else:
+                next_due = start.replace(month=start.month + 1)
+        elif frequency == "quarterly":
+            month = start.month + 3
+            year = start.year
+            if month > 12:
+                month -= 12
+                year += 1
+            next_due = start.replace(month=month, year=year)
+        elif frequency == "yearly":
+            next_due = start.replace(year=start.year + 1)
+        else:
+            next_due = start
+        
+        # Update next due date
+        conn.execute(
+            "UPDATE recurring_expenses SET next_due_date = ? WHERE id = ?",
+            (next_due.strftime("%Y-%m-%d"), rec["id"])
+        )
+    
+    conn.commit()
+    conn.close()
+
+
+def get_recurring_expense_summary(user_id):
+    """Get summary of recurring expenses (monthly projection)"""
+    conn = get_db()
+    
+    # Get active recurring expenses
+    recurring = conn.execute(
+        """SELECT category, SUM(
+            CASE 
+                WHEN frequency = 'daily' THEN amount * 30
+                WHEN frequency = 'weekly' THEN amount * 4.33
+                WHEN frequency = 'biweekly' THEN amount * 2.17
+                WHEN frequency = 'monthly' THEN amount
+                WHEN frequency = 'quarterly' THEN amount / 3
+                WHEN frequency = 'yearly' THEN amount / 12
+                ELSE 0
+            END
+        ) as monthly_projection
+        FROM recurring_expenses
+        WHERE user_id = ? AND is_active = 1
+        GROUP BY category""",
+        (user_id,)
+    ).fetchall()
+    
+    conn.close()
+    
+    return [
+        {
+            "category": r["category"],
+            "monthly_projection": "{:,.2f}".format(r["monthly_projection"] or 0)
+        }
+        for r in recurring
+    ]

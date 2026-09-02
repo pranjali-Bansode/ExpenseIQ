@@ -33,7 +33,7 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now'))
         );
 
-        -- ✅ Budget Table
+        -- Budget Table
         CREATE TABLE IF NOT EXISTS budgets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES users(id),
@@ -42,6 +42,29 @@ def init_db():
             month TEXT NOT NULL,
             created_at TEXT DEFAULT (datetime('now')),
             UNIQUE(user_id, category, month)
+        );
+
+        -- Recurring Expenses Table
+        CREATE TABLE IF NOT EXISTS recurring_expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            amount REAL NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT,
+            frequency TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            next_due_date TEXT NOT NULL,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS recurring_expense_instances (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recurring_expense_id INTEGER NOT NULL REFERENCES recurring_expenses(id),
+            expense_id INTEGER NOT NULL REFERENCES expenses(id),
+            generated_date TEXT DEFAULT (datetime('now'))
         );
     """)
     conn.commit()
@@ -71,8 +94,8 @@ def get_user_by_email(email):
 
 def seed_db():
     conn = get_db()
-
     row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+
     if row[0] > 0:
         conn.close()
         return
@@ -84,19 +107,20 @@ def seed_db():
     user_id = cursor.lastrowid
 
     expenses = [
-        (user_id, 450.00,  "Food",          "2026-04-01", "Groceries from D-Mart"),
-        (user_id, 120.00,  "Transport",     "2026-04-02", "Metro card recharge"),
-        (user_id, 1200.00, "Bills",         "2026-04-03", "Electricity bill"),
-        (user_id, 350.00,  "Health",        "2026-04-05", "Pharmacy — vitamins"),
-        (user_id, 500.00,  "Entertainment", "2026-04-06", "Movie tickets"),
-        (user_id, 800.00,  "Shopping",      "2026-04-07", "New earphones"),
-        (user_id, 200.00,  "Other",         "2026-04-08", "Miscellaneous"),
-        (user_id, 180.00,  "Food",          "2026-04-08", "Lunch with colleagues"),
+        (user_id, 450.00, "Food", "2026-04-01", "Groceries from D-Mart"),
+        (user_id, 120.00, "Transport", "2026-04-02", "Metro recharge"),
+        (user_id, 1200.00, "Bills", "2026-04-03", "Electricity bill"),
+        (user_id, 350.00, "Health", "2026-04-05", "Pharmacy"),
+        (user_id, 500.00, "Entertainment", "2026-04-06", "Movie"),
+        (user_id, 800.00, "Shopping", "2026-04-07", "Earphones"),
+        (user_id, 200.00, "Other", "2026-04-08", "Misc"),
+        (user_id, 180.00, "Food", "2026-04-08", "Lunch"),
     ]
 
     conn.executemany(
         "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
         expenses,
     )
+
     conn.commit()
     conn.close()

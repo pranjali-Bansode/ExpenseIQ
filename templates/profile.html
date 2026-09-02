@@ -21,6 +21,7 @@
         <div>
             <div class="main">{{ user['name'] }}</div>
             <div class="sub">{{ user['email'] }}</div>
+           
         </div>
     </div>
 
@@ -30,7 +31,7 @@
         <a href="{{ url_for('expenses.add_expense') }}" class="primary-btn">
             + Add Expense
         </a>
-
+         <a href="{{ url_for('expenses.list_recurring_expenses') }}" class="primary-btn"> Recurring Expenses</a>
         <!-- LOGOUT -->
         <a href="{{ url_for('logout') }}" class="primary-btn" style="background:#ff4d4f;">
             Logout

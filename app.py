@@ -11,6 +11,7 @@ from database.queries import (
     get_summary_stats,
     get_category_breakdown
 )
+from database.queries import process_recurring_expenses
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
@@ -30,6 +31,7 @@ CATEGORIES = [
 init_db()
 # Seed demo data if database is empty
 seed_db()
+process_recurring_expenses()  # Process recurring expenses on startup
 
 
 # =======================
