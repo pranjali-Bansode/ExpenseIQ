@@ -12,6 +12,7 @@ from database.queries import (
     get_category_breakdown
 )
 from database.queries import process_recurring_expenses
+from database.queries import get_spending_alerts
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
@@ -205,6 +206,8 @@ def profile():
         flash("Please login first!", "warning")
         return redirect(url_for("auth.login"))
 
+    from datetime import datetime as _datetime
+
     conn = get_db()
 
     # USER
@@ -212,6 +215,10 @@ def profile():
         "SELECT * FROM users WHERE id = ?",
         (session["user_id"],)
     ).fetchone()
+
+    # ✨ NEW: SMART SPENDING ALERTS
+    current_month = _datetime.now().strftime("%Y-%m")
+    spending_alerts = get_spending_alerts(session["user_id"], current_month)
 
     # TOTAL EXPENSE
     total = conn.execute(
@@ -279,7 +286,8 @@ def profile():
         categories=CATEGORIES,
         chart_labels=chart_labels,
         chart_values=chart_values,
-        anomaly_ids=anomaly_ids
+        anomaly_ids=anomaly_ids,
+        spending_alerts=spending_alerts
     )
 
 

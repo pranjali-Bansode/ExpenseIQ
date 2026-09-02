@@ -260,6 +260,53 @@ def get_total_expense_for_category(user_id, category, month):
     conn.close()
     return row["total"]
 
+
+# =======================
+# 🔔 SMART SPENDING ALERTS
+# =======================
+
+def get_spending_alerts(user_id, month, warning_threshold=0.8):
+    """
+    Compare spend-so-far against each budgeted category for the given
+    month and flag categories that are approaching or over budget.
+
+    Levels:
+      - "exceeded": spent >= 100% of budget
+      - "warning":  spent >= warning_threshold (default 80%) of budget
+    Categories under the warning threshold are omitted.
+    """
+    budgets = get_all_budgets(user_id, month)
+    if not budgets:
+        return []
+
+    alerts = []
+    for category, budget_amount in budgets.items():
+        if not budget_amount or budget_amount <= 0:
+            continue
+
+        spent = get_total_expense_for_category(user_id, category, month)
+        percent_used = spent / budget_amount
+
+        if percent_used >= 1.0:
+            level = "exceeded"
+        elif percent_used >= warning_threshold:
+            level = "warning"
+        else:
+            continue
+
+        alerts.append({
+            "category": category,
+            "spent": "{:,.2f}".format(spent),
+            "budget": "{:,.2f}".format(budget_amount),
+            "remaining": "{:,.2f}".format(max(budget_amount - spent, 0)),
+            "percent_used": min(int(percent_used * 100), 999),
+            "level": level,
+        })
+
+    # Show the worst offenders first
+    alerts.sort(key=lambda a: a["percent_used"], reverse=True)
+    return alerts
+
 def get_user_budgets(user_id):
     conn = get_db()
     rows = conn.execute(
