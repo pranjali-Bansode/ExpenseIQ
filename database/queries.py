@@ -58,11 +58,14 @@ def insert_expense(user_id, amount, category, expense_date, description):
 
 def get_category_average(user_id, category, exclude_expense_id=None):
     conn = get_db()
-    row = conn.execute(
-        "SELECT AVG(amount) as avg_amount FROM expenses "
-        "WHERE user_id = ? AND category = ?",
-        (user_id, category),
-    ).fetchone()
+    query = "SELECT AVG(amount) as avg_amount FROM expenses WHERE user_id = ? AND category = ?"
+    params = [user_id, category]
+
+    if exclude_expense_id is not None:
+        query += " AND id != ?"
+        params.append(exclude_expense_id)
+
+    row = conn.execute(query, params).fetchone()
     conn.close()
     return row["avg_amount"] or 0
 
@@ -76,7 +79,7 @@ def _build_date_filter(date_from, date_to):
 def get_user_by_id(user_id):
     conn = get_db()
     row = conn.execute(
-        "SELECT id, name, email, created_at FROM users WHERE id = ?",
+        "SELECT id, name, email, phone, created_at FROM users WHERE id = ?",
         (user_id,),
     ).fetchone()
     conn.close()
@@ -93,6 +96,7 @@ def get_user_by_id(user_id):
     return {
         "name": name,
         "email": row["email"],
+        "phone": row["phone"] or "",
         "initials": initials,
         "member_since": member_since,
     }

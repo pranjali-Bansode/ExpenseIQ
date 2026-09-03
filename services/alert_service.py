@@ -1,0 +1,84 @@
+import requests
+import os
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+from database.queries import (
+    get_budget,
+    get_total_expense_for_category,
+    get_category_average,
+)
+
+# ==============================
+# 🔑 Resend API Key
+# ==============================
+
+
+
+# ==============================
+# 📧 EMAIL FUNCTION (FIXED)
+# ==============================
+import smtplib
+from email.mime.text import MIMEText
+
+EMAIL = "pranjalib908@gmail.com"
+APP_PASSWORD = "skhr ltsy vpwc upwx"
+
+
+def send_email(to_email, subject, message):
+    if not to_email:
+        print("❌ No email provided")
+        return
+
+    try:
+        msg = MIMEText(message, "html")
+        msg["Subject"] = subject
+        msg["From"] = EMAIL
+        msg["To"] = to_email
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL, APP_PASSWORD)
+
+        server.send_message(msg)
+        server.quit()
+
+        print(f"✅ EMAIL SENT SUCCESSFULLY → {to_email}")
+
+    except Exception as e:
+        print("❌ Email error:", e)      
+        print("❌ Network/API Error:", e)
+
+# ==============================
+# 🚨 BUDGET ALERT
+# ==============================
+def check_budget_alert(user_id, category, month):
+    budget_amount = get_budget(user_id, category, month)
+
+    if not budget_amount:
+        return None
+
+    total = get_total_expense_for_category(user_id, category, month)
+
+    if total >= budget_amount:
+        return f"⚠️ Budget exceeded for {category}! Spent ₹{total:,.2f}/₹{budget_amount:,.2f}"
+
+    elif total >= 0.8 * budget_amount:
+        return f"⚡ 80% budget reached for {category}! ₹{total:,.2f}/₹{budget_amount:,.2f}"
+
+    return None
+
+
+# ==============================
+# 🚨 ANOMALY DETECTION
+# ==============================
+def detect_anomaly(user_id, category, amount, exclude_expense_id=None):
+    avg = get_category_average(
+        user_id,
+        category,
+        exclude_expense_id=exclude_expense_id
+    )
+
+    if avg and amount > 2 * avg:
+        return f"🚨 Unusual spending detected! ₹{amount:,.2f} vs avg ₹{avg:,.2f}"
+
+    return None

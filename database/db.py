@@ -20,6 +20,7 @@ def init_db():
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            phone TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         );
 
@@ -68,19 +69,38 @@ def init_db():
         );
     """)
     conn.commit()
+
+    # ---- MIGRATION: add `phone` column for existing DBs created before
+    # this column existed. CREATE TABLE IF NOT EXISTS above only helps on
+    # a brand-new database, so older sqlite files need an explicit ALTER. ----
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    if "phone" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+        conn.commit()
+
     conn.close()
 
 
-def create_user(name, email, password):
+def create_user(name, email, password, phone=None):
     conn = get_db()
     cursor = conn.execute(
-        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-        (name, email, generate_password_hash(password)),
+        "INSERT INTO users (name, email, password_hash, phone) VALUES (?, ?, ?, ?)",
+        (name, email, generate_password_hash(password), phone or None),
     )
     conn.commit()
     user_id = cursor.lastrowid
     conn.close()
     return user_id
+
+
+def update_user_phone(user_id, phone):
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET phone = ? WHERE id = ?",
+        (phone or None, user_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_user_by_email(email):

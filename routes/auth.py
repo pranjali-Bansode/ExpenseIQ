@@ -15,6 +15,7 @@ def register():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip()
+        phone = request.form.get("phone", "").strip()
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
 
@@ -27,7 +28,7 @@ def register():
             return render_template("register.html")
 
         try:
-            create_user(name, email, password)
+            create_user(name, email, password, phone=phone or None)
         except sqlite3.IntegrityError:
             flash("Email already registered.", "error")
             return render_template("register.html")
@@ -48,13 +49,25 @@ def login():
         password = request.form.get("password", "")
 
         user = get_user_by_email(email)
+
         if not user or not check_password_hash(user["password_hash"], password):
             flash("Invalid email or password.", "error")
             return render_template("login.html")
 
+        # ✅ SESSION DATA (IMPORTANT FOR ALERT SYSTEM)
         session["user_id"] = user["id"]
         session["user_name"] = user["name"]
+        session["user_email"] = user["email"]   # 🔥 REQUIRED FOR EMAIL ALERTS
+        session["user_phone"] = user["phone"]   # 🔥 REQUIRED FOR SMS ALERTS
 
         return redirect(url_for("profile"))
 
     return render_template("login.html")
+
+
+@auth_bp.route("/logout")
+def logout():
+    # ✅ clear session safely
+    session.clear()
+    flash("Logged out successfully.", "success")
+    return redirect(url_for("auth.login"))

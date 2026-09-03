@@ -14,6 +14,7 @@ from database.queries import (
 from database.queries import process_recurring_expenses
 from database.queries import get_spending_alerts
 from database.queries import get_all_expenses, get_all_budgets, get_user_by_id
+from database.db import update_user_phone
 from services.report_service import generate_expense_report_pdf
 from flask import send_file
 
@@ -332,6 +333,23 @@ def profile():
         anomaly_ids=anomaly_ids,
         spending_alerts=spending_alerts
     )
+
+
+# =======================
+# NOTIFICATION SETTINGS (phone number for SMS alerts)
+# =======================
+@app.route("/profile/notifications", methods=["POST"])
+def update_notifications():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    phone = request.form.get("phone", "").strip()
+
+    update_user_phone(session["user_id"], phone or None)
+    session["user_phone"] = phone or None
+
+    flash("Notification settings updated.", "success")
+    return redirect(url_for("profile"))
 
 
 # =======================
