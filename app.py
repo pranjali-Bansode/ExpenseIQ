@@ -5,7 +5,7 @@ from routes.auth import auth_bp
 from routes.expenses import expense_bp
 from routes.budget import budget_bp
 from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify
-
+import os
 from database.queries import (
     get_recent_transactions,
     get_summary_stats,
@@ -366,4 +366,7 @@ def logout():
 # RUN APP
 # =======================
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
+    )
