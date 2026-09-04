@@ -13,12 +13,11 @@ from database.queries import (
 
 from services.ocr_service import parse_receipt, allowed_file
 
-# ✅ NEW: alert service
+# ✅ Alert service for budget and anomaly detection
 from services.alert_service import (
     check_budget_alert,
     detect_anomaly,
     send_email,
-   
 )
 
 expense_bp = Blueprint('expenses', __name__)
@@ -58,7 +57,7 @@ def add_expense():
         expense_date = request.form.get("date", "").strip()
         description = request.form.get("description", "").strip()
 
-        # ---------------- VALIDATION ---------------- #
+        # ================= VALIDATION ================= #
         try:
             amount = float(amount_raw)
             if amount <= 0:
@@ -79,10 +78,10 @@ def add_expense():
         user_email = session.get("user_email")
         user_phone = session.get("user_phone")
 
-        # ---------------- INSERT ---------------- #
+        # ================= INSERT EXPENSE ================= #
         expense_id = insert_expense(user_id, amount, category, expense_date, description)
 
-        # ---------------- ALERT SYSTEM ---------------- #
+        # ================= ALERT SYSTEM ================= #
         month = expense_date[:7]  # "YYYY-MM" from the expense's own date
         alert1 = check_budget_alert(user_id, category, month)
         alert2 = detect_anomaly(user_id, category, amount, exclude_expense_id=expense_id)
@@ -92,11 +91,30 @@ def add_expense():
         if alert_message:
             flash(alert_message, "warning")
 
-            # ✅ send email if available
+            # ✅ Send email if available and handle errors properly
             if user_email:
-                send_email(user_email, "ExpenseIQ Alert 🚨", alert_message)
+                try:
+                    success, error_msg = send_email(
+                        user_email, 
+                        "ExpenseIQ Alert 🚨", 
+                        alert_message
+                    )
+                    
+                    # Inform user if email failed (but don't prevent expense creation)
+                    if not success:
+                        error_detail = error_msg if error_msg else "Could not send email notification"
+                        flash(
+                            f"⚠️ Alert created but email not sent: {error_detail}",
+                            "info"
+                        )
+                except Exception as e:
+                    # Catch any unexpected errors from send_email
+                    print(f"❌ Unexpected error in email sending: {str(e)}")
+                    flash(
+                        "⚠️ Alert created but email notification failed",
+                        "info"
+                    )
 
-           
         flash("Expense added successfully.", "success")
         return redirect(url_for("profile"))
 
@@ -179,6 +197,4 @@ def list_recurring_expenses():
         return redirect(url_for("auth.login"))
 
     # For now simple page (you can enhance later)
-    return render_template("recurring_expenses.html")    
-
-
+    return render_template("recurring_expenses.html")
