@@ -261,6 +261,13 @@ def profile():
         (session["user_id"],)
     ).fetchone()
 
+    # ✅ ADD THIS CHECK - if user not found, redirect to login
+    if user is None:
+        conn.close()
+        session.clear()
+        flash("User profile not found. Please log in again.", "warning")
+        return redirect(url_for("auth.login"))
+
     # ✨ NEW: SMART SPENDING ALERTS
     current_month = _datetime.now().strftime("%Y-%m")
     spending_alerts = get_spending_alerts(session["user_id"], current_month)
@@ -279,8 +286,7 @@ def profile():
         LIMIT 20
     """, (session["user_id"],)).fetchall()
 
-      
-          # ANOMALY CHECK FOR RECENT TRANSACTIONS
+    # ANOMALY CHECK FOR RECENT TRANSACTIONS
     avg_rows = conn.execute("""
         SELECT category, AVG(amount) as avg_amount
         FROM expenses
@@ -296,8 +302,6 @@ def profile():
         and e["amount"] > 2 * category_avg[e["category"]]
     }
 
-
-    
     # CATEGORY BREAKDOWN
     category_data = conn.execute("""
         SELECT category, SUM(amount) as total
