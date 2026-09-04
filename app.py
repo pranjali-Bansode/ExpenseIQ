@@ -17,7 +17,8 @@ from database.queries import get_all_expenses, get_all_budgets, get_user_by_id
 from database.db import update_user_phone
 from services.report_service import generate_expense_report_pdf
 from flask import send_file
-
+from dotenv import load_dotenv
+load_dotenv()
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
 
