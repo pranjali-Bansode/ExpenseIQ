@@ -5,5 +5,5 @@ Pillow==11.0.0
 easyocr==1.7.1
 opencv-python==4.10.0.84
 requests==2.32.3
-reportlab==4.1.1
+reportlab==4.0.9
 gunicorn==23.0.0
