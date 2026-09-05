@@ -9,14 +9,18 @@ from database.queries import (
 )
 
 # ==============================
-# 🔑 ENV VARIABLES
+# 🔑 ENV VARIABLES WITH DEBUGGING
 # ==============================
 GMAIL_EMAIL = os.getenv("GMAIL_EMAIL")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
+# Debug: Print what we got
+print(f"DEBUG: GMAIL_EMAIL = {GMAIL_EMAIL}")
+print(f"DEBUG: GMAIL_APP_PASSWORD = {'*' * len(GMAIL_APP_PASSWORD) if GMAIL_APP_PASSWORD else 'NOT SET'}")
+
 
 # ==============================
-# 📧 EMAIL FUNCTION (GMAIL SMTP)
+# 📧 EMAIL FUNCTION (GMAIL SMTP) - WITH DETAILED LOGGING
 # ==============================
 def send_email(to_email, subject, message):
     """
@@ -25,14 +29,25 @@ def send_email(to_email, subject, message):
     Returns:
         (success: bool, error_message: str or None)
     """
+    print(f"\n📧 [EMAIL DEBUG] Attempting to send email to: {to_email}")
+    print(f"📧 [EMAIL DEBUG] Subject: {subject}")
+    
     if not to_email:
+        print("❌ [EMAIL DEBUG] No email provided")
         return False, "No email provided"
 
-    if not GMAIL_EMAIL or not GMAIL_APP_PASSWORD:
-        print("⚠️ Gmail credentials not configured in .env")
-        return False, "Email service not configured"
+    if not GMAIL_EMAIL:
+        error_msg = "GMAIL_EMAIL not set in environment variables"
+        print(f"❌ [EMAIL DEBUG] {error_msg}")
+        return False, error_msg
+
+    if not GMAIL_APP_PASSWORD:
+        error_msg = "GMAIL_APP_PASSWORD not set in environment variables"
+        print(f"❌ [EMAIL DEBUG] {error_msg}")
+        return False, error_msg
 
     try:
+        print(f"📧 [EMAIL DEBUG] Creating email message...")
         # Create email
         msg = MIMEMultipart()
         msg["From"] = GMAIL_EMAIL
@@ -42,27 +57,35 @@ def send_email(to_email, subject, message):
         # Add HTML body
         msg.attach(MIMEText(message, "html"))
 
+        print(f"📧 [EMAIL DEBUG] Connecting to Gmail SMTP server...")
         # Send via Gmail SMTP
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            print(f"📧 [EMAIL DEBUG] Connected to SMTP server")
+            
+            print(f"📧 [EMAIL DEBUG] Attempting login with email: {GMAIL_EMAIL}")
             server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+            print(f"✅ [EMAIL DEBUG] Login successful!")
+            
+            print(f"📧 [EMAIL DEBUG] Sending message...")
             server.send_message(msg)
+            print(f"✅ [EMAIL DEBUG] Message sent successfully!")
 
         print(f"✅ EMAIL SENT → {to_email}")
         return True, None
 
-    except smtplib.SMTPAuthenticationError:
-        error_msg = "Gmail authentication failed. Check GMAIL_EMAIL and GMAIL_APP_PASSWORD in .env"
-        print(f"❌ {error_msg}")
+    except smtplib.SMTPAuthenticationError as e:
+        error_msg = f"Gmail authentication failed. Check GMAIL_EMAIL and GMAIL_APP_PASSWORD. Error: {str(e)}"
+        print(f"❌ [EMAIL DEBUG] {error_msg}")
         return False, error_msg
 
     except smtplib.SMTPException as e:
         error_msg = f"SMTP error: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"❌ [EMAIL DEBUG] {error_msg}")
         return False, error_msg
 
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"❌ [EMAIL DEBUG] {error_msg}")
         return False, error_msg
 
 
