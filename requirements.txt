@@ -1,9 +1,9 @@
-Flask==3.0.0
+Flask==3.0.3
 Flask-Session==0.5.0
-python-dotenv==1.0.0
-Pillow==10.1.0
-easyocr==1.7.0
-opencv-python==4.8.1.78
-requests==2.31.0
-reportlab==4.0.7
-gunicorn==21.2.0
+python-dotenv==1.0.1
+Pillow==11.0.0
+easyocr==1.7.1
+opencv-python==4.10.0.84
+requests==2.32.3
+reportlab==4.1.1
+gunicorn==23.0.0
