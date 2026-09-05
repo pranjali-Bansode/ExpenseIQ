@@ -1,4 +1,6 @@
-import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import os
 from database.queries import (
     get_budget,
@@ -9,15 +11,16 @@ from database.queries import (
 # ==============================
 # 🔑 ENV VARIABLES
 # ==============================
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+GMAIL_EMAIL = os.getenv("GMAIL_EMAIL")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 
 # ==============================
-# 📧 EMAIL FUNCTION (RESEND API)
+# 📧 EMAIL FUNCTION (GMAIL SMTP)
 # ==============================
 def send_email(to_email, subject, message):
     """
-    Send email using Resend API (production safe)
+    Send email using Gmail SMTP (production safe)
 
     Returns:
         (success: bool, error_message: str or None)
@@ -25,38 +28,42 @@ def send_email(to_email, subject, message):
     if not to_email:
         return False, "No email provided"
 
+    if not GMAIL_EMAIL or not GMAIL_APP_PASSWORD:
+        print("⚠️ Gmail credentials not configured in .env")
+        return False, "Email service not configured"
+
     try:
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": "onboarding@resend.dev",  # default test sender
-                "to": [to_email],
-                "subject": subject,
-                "html": message,
-            },
-            timeout=10
-        )
+        # Create email
+        msg = MIMEMultipart()
+        msg["From"] = GMAIL_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = subject
 
-        if response.status_code in [200, 201]:
-            print(f"✅ EMAIL SENT → {to_email}")
-            return True, None
-        else:
-            error_msg = f"Resend error: {response.text}"
-            print(f"❌ {error_msg}")
-            return False, error_msg
+        # Add HTML body
+        msg.attach(MIMEText(message, "html"))
 
-    except requests.exceptions.Timeout:
-        return False, "Request timed out"
+        # Send via Gmail SMTP
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
 
-    except requests.exceptions.ConnectionError:
-        return False, "Network error (check internet or hosting)"
+        print(f"✅ EMAIL SENT → {to_email}")
+        return True, None
+
+    except smtplib.SMTPAuthenticationError:
+        error_msg = "Gmail authentication failed. Check GMAIL_EMAIL and GMAIL_APP_PASSWORD in .env"
+        print(f"❌ {error_msg}")
+        return False, error_msg
+
+    except smtplib.SMTPException as e:
+        error_msg = f"SMTP error: {str(e)}"
+        print(f"❌ {error_msg}")
+        return False, error_msg
 
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        error_msg = f"Unexpected error: {str(e)}"
+        print(f"❌ {error_msg}")
+        return False, error_msg
 
 
 # ==============================
