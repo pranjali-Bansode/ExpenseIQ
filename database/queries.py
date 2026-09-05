@@ -56,9 +56,22 @@ def insert_expense(user_id, amount, category, expense_date, description):
     conn.close()
     return expense_id
 
-def get_category_average(user_id, category, exclude_expense_id=None):
+def get_category_average(user_id, category, exclude_expense_id=None, return_count=False):
+    """
+    Average amount previously spent in `category`, optionally excluding
+    one expense (typically the expense currently being evaluated, so it
+    doesn't skew its own baseline).
+
+    If return_count=True, returns (avg, count) so callers can require a
+    minimum sample size before treating "2x average" as meaningful - with
+    0 or 1 prior expenses, any new amount looks "anomalous" against an
+    average that IS that one data point.
+    """
     conn = get_db()
-    query = "SELECT AVG(amount) as avg_amount FROM expenses WHERE user_id = ? AND category = ?"
+    query = (
+        "SELECT AVG(amount) as avg_amount, COUNT(*) as n "
+        "FROM expenses WHERE user_id = ? AND category = ?"
+    )
     params = [user_id, category]
 
     if exclude_expense_id is not None:
@@ -67,7 +80,13 @@ def get_category_average(user_id, category, exclude_expense_id=None):
 
     row = conn.execute(query, params).fetchone()
     conn.close()
-    return row["avg_amount"] or 0
+
+    avg = row["avg_amount"] or 0
+    count = row["n"] or 0
+
+    if return_count:
+        return avg, count
+    return avg
 
 
 def _build_date_filter(date_from, date_to):

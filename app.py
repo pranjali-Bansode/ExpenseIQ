@@ -20,7 +20,9 @@ from flask import send_file
 from dotenv import load_dotenv
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = "dev-secret-key"
+# Read from env (set in Render dashboard); falls back to a dev-only value
+# so local `flask run` still works without a .env file.
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-do-not-use-in-prod")
 
 # Register Blueprints
 app.register_blueprint(auth_bp)
@@ -287,20 +289,21 @@ def profile():
     """, (session["user_id"],)).fetchall()
 
     # ANOMALY CHECK FOR RECENT TRANSACTIONS
-    avg_rows = conn.execute("""
-        SELECT category, AVG(amount) as avg_amount
-        FROM expenses
-        WHERE user_id = ?
-        GROUP BY category
-    """, (session["user_id"],)).fetchall()
+    # NOTE: each expense's average EXCLUDES itself (same rule detect_anomaly()
+    # uses when an expense is first added) and requires at least 3 prior
+    # expenses in that category before flagging - otherwise a category's
+    # very first expense trivially looks "anomalous" against itself, and a
+    # second expense looks anomalous against an average of one data point.
+    from database.queries import get_category_average as _get_category_average
 
-    category_avg = {row["category"]: row["avg_amount"] for row in avg_rows}
-
-    anomaly_ids = {
-        e["id"] for e in expenses
-        if category_avg.get(e["category"], 0) > 0
-        and e["amount"] > 2 * category_avg[e["category"]]
-    }
+    anomaly_ids = set()
+    for e in expenses:
+        avg, count = _get_category_average(
+            session["user_id"], e["category"],
+            exclude_expense_id=e["id"], return_count=True,
+        )
+        if avg and count >= 3 and e["amount"] > 2 * avg:
+            anomaly_ids.add(e["id"])
 
     # CATEGORY BREAKDOWN
     category_data = conn.execute("""
