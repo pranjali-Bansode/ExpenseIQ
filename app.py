@@ -1,24 +1,35 @@
-from flask import Flask, render_template, session, redirect, url_for, flash
-from database.db import init_db, get_db, seed_db
-
-from routes.auth import auth_bp
-from routes.expenses import expense_bp
-from routes.budget import budget_bp
-from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify
 import os
+from datetime import datetime as _datetime, timedelta
+
+from dotenv import load_dotenv
+from flask import (
+    Flask, render_template, session, redirect, url_for, flash,
+    request, jsonify, send_file,
+)
+
+from database.db import init_db, get_db, seed_db, update_user_phone
 from database.queries import (
     get_recent_transactions,
     get_summary_stats,
-    get_category_breakdown
+    get_category_breakdown,
+    get_monthly_trend_data,
+    get_month_over_month_comparison,
+    get_category_trend_over_time,
+    get_spending_velocity,
+    get_category_average,
+    get_spending_alerts,
+    get_all_expenses,
+    get_all_budgets,
+    get_user_by_id,
+    process_recurring_expenses,
 )
-from database.queries import process_recurring_expenses
-from database.queries import get_spending_alerts
-from database.queries import get_all_expenses, get_all_budgets, get_user_by_id
-from database.db import update_user_phone
+from routes.auth import auth_bp
+from routes.expenses import expense_bp
+from routes.budget import budget_bp
 from services.report_service import generate_expense_report_pdf
-from flask import send_file
-from dotenv import load_dotenv
+
 load_dotenv()
+
 app = Flask(__name__)
 # Read from env (set in Render dashboard); falls back to a dev-only value
 # so local `flask run` still works without a .env file.
@@ -59,27 +70,19 @@ def landing():
 def analytics():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
-    
-    # ✨ NEW: Get date filter if provided
+
     date_from = request.args.get("date_from")
     date_to = request.args.get("date_to")
-    
-    # ✨ NEW: Get anomalies data
-    transactions = get_recent_transactions(session["user_id"], limit=50, 
-                                           date_from=date_from, date_to=date_to)
-    
-    # ✨ NEW: Get summary stats
-    stats = get_summary_stats(session["user_id"], date_from=date_from, 
-                              date_to=date_to)
-    
-    # ✨ NEW: Get category breakdown
-    category_breakdown = get_category_breakdown(session["user_id"], 
-                                                date_from=date_from, date_to=date_to)
-    
-    # ✨ NEW: Filter anomalies
+
+    transactions = get_recent_transactions(
+        session["user_id"], limit=50, date_from=date_from, date_to=date_to
+    )
+    stats = get_summary_stats(session["user_id"], date_from=date_from, date_to=date_to)
+    category_breakdown = get_category_breakdown(
+        session["user_id"], date_from=date_from, date_to=date_to
+    )
     anomalies = [t for t in transactions if t["is_anomaly"]]
-    
-    # ✨ NEW: Pass data to template
+
     return render_template(
         "analytics.html",
         transactions=transactions,
@@ -92,14 +95,12 @@ def analytics():
 
 
 # =======================
-# 📄 EXPORT REPORT (PDF)
+# EXPORT REPORT (PDF)
 # =======================
 @app.route("/export/report")
 def export_report():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
-
-    from datetime import datetime as _datetime
 
     date_from = request.args.get("date_from")
     date_to = request.args.get("date_to")
@@ -107,7 +108,9 @@ def export_report():
     user = get_user_by_id(session["user_id"])
     expenses = get_all_expenses(session["user_id"], date_from=date_from, date_to=date_to)
     stats = get_summary_stats(session["user_id"], date_from=date_from, date_to=date_to)
-    category_breakdown = get_category_breakdown(session["user_id"], date_from=date_from, date_to=date_to)
+    category_breakdown = get_category_breakdown(
+        session["user_id"], date_from=date_from, date_to=date_to
+    )
 
     current_month = _datetime.now().strftime("%Y-%m")
     budgets = get_all_budgets(session["user_id"], current_month)
@@ -132,91 +135,34 @@ def export_report():
 
 
 # =======================
-# 📊 EXPENSE TRENDS - app.py MODIFICATIONS
+# EXPENSE TRENDS & COMPARISON
 # =======================
-
-# ========================
-# STEP 1: UPDATE IMPORTS (Lines 1-12)
-# ========================
-# REPLACE THIS:
-"""
-from flask import Flask, render_template, session, redirect, url_for, flash
-from database.db import init_db, get_db, seed_db
-
-from routes.auth import auth_bp
-from routes.expenses import expense_bp
-from routes.budget import budget_bp
-
-from database.queries import (
-    get_recent_transactions,
-    get_summary_stats,
-    get_category_breakdown
-)
-"""
-
-# WITH THIS:
-from flask import Flask, render_template, session, redirect, url_for, flash, request
-from database.db import init_db, get_db, seed_db
-
-from routes.auth import auth_bp
-from routes.expenses import expense_bp
-from routes.budget import budget_bp
-
-from database.queries import (
-    get_recent_transactions,
-    get_summary_stats,
-    get_category_breakdown,
-    get_monthly_trend_data,
-    get_month_over_month_comparison,
-    get_category_trend_over_time,
-    get_spending_velocity
-)
-
-# ========================
-# STEP 2: ADD NEW ROUTE (After line 81, before /profile route)
-# ========================
-# ADD THIS COMPLETE ROUTE:
-
 @app.route("/trends")
 def trends():
     """Expense Trends & Comparison page"""
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
-    
-    from datetime import datetime, timedelta
-    
-    # Get current and previous month
-    today = datetime.now()
+
+    today = _datetime.now()
     current_month = today.strftime("%Y-%m")
     previous_month = (today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
-    
-    # Get comparison data
+
     comparison = get_month_over_month_comparison(
-        session["user_id"], 
-        current_month, 
-        previous_month
+        session["user_id"], current_month, previous_month
     )
-    
-    # Get monthly trends
     trend_data = get_monthly_trend_data(session["user_id"], months=6)
-    
-    # Get spending velocity
     velocity = get_spending_velocity(session["user_id"])
-    
-    # Get selected category trend (default to first category if available)
+
     selected_category = request.args.get("category", "Food")
     category_trend = get_category_trend_over_time(
-        session["user_id"], 
-        selected_category, 
-        months=6
+        session["user_id"], selected_category, months=6
     )
-    
-    # Get unique categories for dropdown
+
     all_categories = list(set(
-        cat for month_cats in trend_data.values() 
+        cat for month_cats in trend_data.values()
         for cat in [c["category"] for c in month_cats]
     ))
-    
+
     return render_template(
         "trends.html",
         comparison=comparison,
@@ -244,6 +190,7 @@ def trends_category_data():
 
     return jsonify({"labels": labels, "data": data})
 
+
 # =======================
 # PROFILE DASHBOARD
 # =======================
@@ -253,8 +200,6 @@ def profile():
         flash("Please login first!", "warning")
         return redirect(url_for("auth.login"))
 
-    from datetime import datetime as _datetime
-
     conn = get_db()
 
     # USER
@@ -263,14 +208,13 @@ def profile():
         (session["user_id"],)
     ).fetchone()
 
-    # ✅ ADD THIS CHECK - if user not found, redirect to login
     if user is None:
         conn.close()
         session.clear()
         flash("User profile not found. Please log in again.", "warning")
         return redirect(url_for("auth.login"))
 
-    # ✨ NEW: SMART SPENDING ALERTS
+    # SMART SPENDING ALERTS
     current_month = _datetime.now().strftime("%Y-%m")
     spending_alerts = get_spending_alerts(session["user_id"], current_month)
 
@@ -294,11 +238,9 @@ def profile():
     # expenses in that category before flagging - otherwise a category's
     # very first expense trivially looks "anomalous" against itself, and a
     # second expense looks anomalous against an average of one data point.
-    from database.queries import get_category_average as _get_category_average
-
     anomaly_ids = set()
     for e in expenses:
-        avg, count = _get_category_average(
+        avg, count = get_category_average(
             session["user_id"], e["category"],
             exclude_expense_id=e["id"], return_count=True,
         )
@@ -322,10 +264,7 @@ def profile():
 
     conn.close()
 
-    # Convert budgets → dict (SAFE)
     budgets = {row[0]: row[1] for row in rows}
-
-    # Chart data
     chart_labels = [row[0] for row in category_data]
     chart_values = [row[1] for row in category_data]
 

@@ -10,19 +10,37 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
-      # --- Add the REAL values in the Render dashboard (Settings ->
-      #     Environment), NOT here in render.yaml, and NOT in a committed
-      #     .env file. sync:false means "read this from the dashboard,
-      #     never from this file".
+      
+      # --- GENERAL CONFIGURATION ---
       - key: SECRET_KEY
         sync: false
-      - key: RESEND_API_KEY
+      
+      # --- FLASK-MAIL CONFIGURATION (Primary - Use These!) ---
+      # These are the standard Flask-Mail variables your code should use
+      - key: MAIL_SERVER
+        value: "smtp.gmail.com"
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USE_TLS
+        value: "True"
+      - key: MAIL_USERNAME
         sync: false
+        # Set this in Render dashboard to: your-email@gmail.com
+      - key: MAIL_PASSWORD
+        sync: false
+        # Set this in Render dashboard to: your-16-char-app-password
+      
+      # --- OCR CONFIGURATION ---
+      - key: OCR_SPACE_API_KEY
+        sync: false
+      
+      # --- LEGACY EMAIL VARIABLES (Keep for now, but use MAIL_* above in code) ---
+      # These are replaced by MAIL_* variables above. Can be deprecated later.
       - key: ALERT_FROM_EMAIL
         sync: false
       - key: GMAIL_EMAIL
         sync: false
       - key: GMAIL_APP_PASSWORD
         sync: false
-      - key: OCR_SPACE_API_KEY
+      - key: RESEND_API_KEY
         sync: false
