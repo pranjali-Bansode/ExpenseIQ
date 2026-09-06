@@ -119,10 +119,16 @@ def parse_receipt(image_file):
     amount = extract_amount(text)
     category = guess_category(text)
 
+    # First non-empty line is typically the store/merchant name (e.g. "D Mart")
+    # - a much more useful description than a raw dump of the first 100
+    # characters, which tends to include GSTIN/CIN numbers and other header
+    # noise before anything readable shows up.
+    description = next((line.strip() for line in text.split("\n") if line.strip()), "")[:100]
+
     return {
         "amount": amount,
         "category": category,
-        "description": text[:100],  # First 100 chars
+        "description": description,
         "confidence": 0.75 if amount else 0.3,
     }
 
@@ -130,29 +136,61 @@ def parse_receipt(image_file):
 # ==============================
 # 💲 EXTRACT AMOUNT
 # ==============================
+# Lines containing these words are savings/discounts, not what was paid -
+# e.g. "Saved Rs. 90.00 on MRP" on a DMart-style receipt. Without this
+# exclusion, a discount amount can get picked up as if it were the total.
+_EXCLUDE_LINE_WORDS = ("saved", "discount", "you save", "off on mrp", "cashback")
+
+# Checked in this order: specific "this IS the total" phrases first, generic
+# currency symbols last - so a real total/payment line always wins over an
+# incidental Rs./₹ mention elsewhere on the receipt (like a savings line).
+_AMOUNT_KEYWORD_PATTERNS = [
+    r"grand\s*total\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
+    r"net\s*(?:amount|payable)\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
+    r"amount\s*received\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
+    r"upi\s*payment\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
+    r"total\s*amount\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
+    r"bill\s*amt\.?\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
+    r"total\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",   # generic "total"
+    r"amount\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",  # generic "amount"
+]
+
+
 def extract_amount(text):
     """
-    Extract numerical amount from text.
-    Looks for: ₹, Rs, Total, Amount, etc.
+    Extract the amount actually paid from receipt text.
+
+    Strategy:
+    1. Try specific "this is the total" phrases first (grand total, net
+       amount, amount received, UPI payment, etc.) - these are unambiguous.
+    2. If none match, fall back to the largest ₹/Rs number found on any
+       line that isn't a savings/discount line - on real receipts the
+       grand total is virtually always the largest currency figure printed,
+       while savings/discount lines are smaller call-outs.
     """
-    text = text.replace("\n", " ").lower()
+    flat = text.replace("\n", " ").lower()
 
-    patterns = [
-        r"total\s*[:=]?\s*₹?\s*rs?\.?\s*(\d+(?:\.\d{2})?)",   # total: ₹500 / total rs 500
-        r"amount\s*[:=]?\s*₹?\s*rs?\.?\s*(\d+(?:\.\d{2})?)",  # amount: 500
-        r"₹\s*(\d+(?:\.\d{2})?)",                              # ₹500 or ₹500.00
-        r"rs\.?\s*(\d+(?:\.\d{2})?)",                          # Rs 500 or Rs. 500
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, text)
+    for pattern in _AMOUNT_KEYWORD_PATTERNS:
+        match = re.search(pattern, flat)
         if match:
             try:
                 return float(match.group(1))
             except ValueError:
                 continue
 
-    return 0.0
+    # Fallback: largest ₹/Rs amount on a line that isn't a discount call-out.
+    candidates = []
+    for line in text.split("\n"):
+        low = line.lower()
+        if any(word in low for word in _EXCLUDE_LINE_WORDS):
+            continue
+        for m in re.finditer(r"(?:₹|rs\.?)\s*(\d+(?:\.\d{2})?)", low):
+            try:
+                candidates.append(float(m.group(1)))
+            except ValueError:
+                pass
+
+    return max(candidates) if candidates else 0.0
 
 
 # ==============================
@@ -163,10 +201,22 @@ def guess_category(text):
     text = text.lower()
 
     category_keywords = {
-        "Food": ["restaurant", "cafe", "pizza", "burger", "coffee", "food", "delivery", "swiggy", "zomato", "dine"],
+        "Food": [
+            "restaurant", "cafe", "pizza", "burger", "coffee", "food", "delivery",
+            "swiggy", "zomato", "dine",
+            # supermarket/grocery vocabulary - a grocery run (DMart, Big Bazaar,
+            # More, Reliance Fresh, etc.) is a food expense, not a utility bill.
+            "mart", "supermarket", "supermarts", "hypermarket", "grocery", "kirana",
+        ],
         "Transport": ["uber", "ola", "taxi", "petrol", "gas", "parking", "metro", "train", "bus", "vehicle"],
         "Shopping": ["mall", "store", "shop", "amazon", "flipkart", "retail", "market", "dress", "clothes"],
-        "Bills": ["electricity", "water", "internet", "phone", "utility", "bill", "recharge"],
+        # NOTE: bare "bill" was removed from here - almost every retail receipt
+        # prints "Bill No." / "Bill Dt.", so it was matching supermarket and
+        # restaurant receipts as "Bills" before either Food or Shopping got a
+        # chance to match anything more specific. The remaining keywords below
+        # are specific enough to actual utility bills that this false-positive
+        # doesn't happen anymore.
+        "Bills": ["electricity", "water bill", "internet bill", "broadband", "phone bill", "utility", "recharge"],
         "Health": ["pharmacy", "doctor", "hospital", "medical", "health", "medicine", "clinic"],
         "Entertainment": ["movie", "cinema", "theater", "game", "spotify", "netflix", "show", "ticket"],
     }
