@@ -1,49 +1,37 @@
 """
-OCR Service - Receipt scanning for ExpenseIQ (EasyOCR-based, Render-safe).
+OCR Service - Receipt scanning for ExpenseIQ (hosted-API based, Render free-tier safe).
 
-FIXES vs. the previous version:
-1. easyocr.Reader(...).readtext() does NOT accept a PIL.Image object.
-   It only accepts: a file path (str), raw bytes, or a numpy array.
-   Passing a PIL Image silently produces wrong/empty results (or raises,
-   depending on version) - this was the #1 reason OCR "did nothing".
-   Fix: convert to a numpy array with np.array(img) before calling readtext().
-2. `easyocr.Reader(['en'])` was being created on EVERY request. This:
-   - re-loads the ~65-100MB recognition model from disk every single call
-   - is extremely slow (multiple seconds, sometimes >30s cold)
-   - is why requests were timing out on Render (gunicorn's default worker
-     timeout is 30s) and appearing to "not work" in production even though
-     it might succeed locally on a first warm call.
-   Fix: build the Reader ONCE at import time (module-level singleton) and
-   reuse it across requests.
-3. Added explicit, actionable exceptions instead of swallowing errors.
+WHY THIS VERSION EXISTS:
+The previous easyocr+torch approach needs far more RAM/CPU to load and run
+its model than Render's free instance provides (0.1 CPU / 512MB RAM - Render's
+own docs describe this tier as "not suitable for AI inference"). No code fix
+changes that; the model itself doesn't fit. This version removes local ML
+inference entirely and instead calls OCR.space's hosted OCR API over HTTPS -
+the same pattern used for email via Resend: push the heavy lifting to an
+external service reached over plain HTTPS (443), which Render's free tier
+handles fine (only raw SMTP ports are blocked, not HTTPS).
 
-DEPLOYMENT NOTES (Render):
-- requirements.txt must use `opencv-python-headless`, NOT `opencv-python`.
-  easyocr depends on OpenCV internally. The regular `opencv-python` wheel
-  needs system graphics libraries (libGL.so.1, libSM.so.6, libXext.so.6)
-  that are NOT present on Render's slim Python runtime. This causes:
-      ImportError: libGL.so.1: cannot open shared object file
-  at import time -> the whole app can fail to boot, not just OCR.
-  `opencv-python-headless` has no GUI dependency and works out of the box.
-- easyocr pulls in torch (PyTorch), which is a large download (several
-  hundred MB) and needs real memory to run inference (recommend at least
-  a 1GB-RAM Render instance; the free 512MB tier will likely OOM on the
-  first OCR request). If you're stuck on a small instance, see the
-  "lighter alternative" note at the bottom of this file.
-- The very first OCR call after a deploy will download EasyOCR's model
-  weights to disk (~/.EasyOCR by default). Render's filesystem is writable
-  at runtime but is EPHEMERAL (wiped on every deploy/restart), so this
-  download will repeat on every deploy. That's normal, but budget for it
-  by warming up the model at startup (see `_get_reader()` below) rather
-  than on the user's first request.
+SETUP REQUIRED:
+1. Register a free API key at https://ocr.space/ocrapi (no credit card).
+   Free tier: 25,000 requests/month, 1MB file size limit per image.
+2. Set OCR_SPACE_API_KEY in Render's dashboard (Environment tab) - same
+   place as RESEND_API_KEY / GMAIL_EMAIL etc.
+   Do NOT rely on the shared demo key "helloworld" in production - it's
+   rate-limited to ~10 requests every 10 minutes across ALL of OCR.space's
+   users worldwide, not just you, and will fail under any real usage.
+3. requirements.txt no longer needs easyocr / torch / opencv-python-headless
+   / numpy for OCR - only `requests`, which was already there. This also
+   removes several hundred MB from the build and eliminates the memory/
+   timeout problems entirely.
 """
 
-import io
+import os
 import re
-import threading
 
-import numpy as np
-from PIL import Image
+import requests
+
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")  # demo key fallback
+OCR_SPACE_URL = "https://api.ocr.space/parse/image"
 
 # ==============================
 # 🎯 ALLOWED FILE TYPES
@@ -57,30 +45,11 @@ def allowed_file(filename):
 
 
 # ==============================
-# 🧠 SINGLETON EASYOCR READER
-# ==============================
-# Built once (lazily, thread-safely) instead of once-per-request.
-_reader = None
-_reader_lock = threading.Lock()
-
-
-def _get_reader():
-    global _reader
-    if _reader is None:
-        with _reader_lock:
-            if _reader is None:  # re-check inside the lock
-                import easyocr  # imported lazily so app boot doesn't block on it
-                # gpu=False is required on Render (no GPU available)
-                _reader = easyocr.Reader(["en"], gpu=False)
-    return _reader
-
-
-# ==============================
-# 📸 OCR TEXT EXTRACTION
+# 📸 OCR TEXT EXTRACTION (OCR.space hosted API)
 # ==============================
 def extract_text_from_image(image_file):
     """
-    Extract text from an uploaded image using EasyOCR.
+    Extract text from an uploaded image via OCR.space's hosted API.
 
     Args:
         image_file: File object from request.files (Flask FileStorage)
@@ -88,22 +57,44 @@ def extract_text_from_image(image_file):
     Returns:
         str: Extracted text
     """
-    try:
-        img = Image.open(io.BytesIO(image_file.read())).convert("RGB")
-    except Exception as e:
-        raise Exception(f"Could not read image file: {str(e)}")
-
-    # easyocr needs a numpy array (or path/bytes) - NOT a PIL Image.
-    img_array = np.array(img)
+    image_file.seek(0)
+    filename = getattr(image_file, "filename", "receipt.jpg") or "receipt.jpg"
 
     try:
-        reader = _get_reader()
-        results = reader.readtext(img_array)
-    except Exception as e:
-        raise Exception(f"OCR extraction failed: {str(e)}")
+        response = requests.post(
+            OCR_SPACE_URL,
+            files={"file": (filename, image_file.read(), "application/octet-stream")},
+            data={
+                "apikey": OCR_SPACE_API_KEY,
+                "language": "eng",
+                "OCREngine": "2",  # OCR.space's more accurate engine
+                "isOverlayRequired": "false",
+                "scale": "true",
+            },
+            timeout=25,
+        )
+    except requests.RequestException as e:
+        raise Exception(f"Could not reach OCR service: {str(e)}")
 
-    extracted_text = "\n".join(item[1] for item in results)
-    return extracted_text
+    if response.status_code != 200:
+        raise Exception(f"OCR service returned HTTP {response.status_code}: {response.text[:300]}")
+
+    try:
+        result = response.json()
+    except ValueError:
+        raise Exception("OCR service returned an unexpected (non-JSON) response")
+
+    if result.get("IsErroredOnProcessing"):
+        error_msg = result.get("ErrorMessage") or result.get("ErrorDetails") or "Unknown OCR error"
+        if isinstance(error_msg, list):  # OCR.space sometimes returns a list
+            error_msg = "; ".join(error_msg)
+        raise Exception(f"OCR processing failed: {error_msg}")
+
+    parsed_results = result.get("ParsedResults") or []
+    if not parsed_results:
+        return ""
+
+    return "\n".join(pr.get("ParsedText", "") for pr in parsed_results)
 
 
 # ==============================
@@ -186,20 +177,3 @@ def guess_category(text):
                 return category
 
     return "Other"
-
-
-# ==============================
-# 🪶 LIGHTER ALTERNATIVE (optional)
-# ==============================
-# If Render's memory/build limits make easyocr+torch impractical on your
-# plan, you can swap this whole module for a Tesseract-based version:
-#   1. requirements.txt: pytesseract==0.3.13 (drop easyocr, opencv-*)
-#   2. render.yaml buildCommand:
-#        apt-get update && apt-get install -y tesseract-ocr && \
-#        pip install --upgrade pip && pip install -r requirements.txt
-#      (Render's native Python runtime does NOT run apt-get for you -
-#       you need a Dockerfile-based service, or Render's "aptfile" style
-#       buildpack, to get the tesseract-ocr system binary installed.)
-#   3. Never hardcode a Windows path like
-#        pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\..."
-#      on Linux - just leave tesseract_cmd unset so it uses PATH.

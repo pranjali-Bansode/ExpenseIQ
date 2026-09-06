@@ -3,7 +3,26 @@ services:
     name: expenseiq
     env: python
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    # --timeout 60: a little headroom for the OCR.space HTTP call (up to ~25s)
+    #   plus normal request handling. No longer need 120s now that OCR runs
+    #   on a hosted API instead of loading a local ML model.
+    startCommand: gunicorn app:app --timeout 60 --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
+      # --- Add the REAL values in the Render dashboard (Settings ->
+      #     Environment), NOT here in render.yaml, and NOT in a committed
+      #     .env file. sync:false means "read this from the dashboard,
+      #     never from this file".
+      - key: SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ALERT_FROM_EMAIL
+        sync: false
+      - key: GMAIL_EMAIL
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: OCR_SPACE_API_KEY
+        sync: false

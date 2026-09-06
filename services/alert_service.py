@@ -21,6 +21,23 @@ Resend's HTTP API as the primary path - HTTP calls over 443 are not
 subject to Gmail's SMTP heuristics and are the standard fix for
 "transactional email from a PaaS" problems.
 
+A THIRD issue, seen directly in a Render deploy log after the fixes above
+were applied:
+
+- Resend returned 403 "You can only send testing emails to your own email
+  address" - this is Resend's sandbox restriction on brand-new accounts:
+  until you verify a domain at resend.com/domains, you can ONLY send to the
+  email address you signed up to Resend with. Sending an alert to any other
+  user's email will be rejected. Verify a domain and send FROM an address on
+  that domain to lift the restriction (or, for quick testing, log in as the
+  Resend account owner's own email address).
+- The Gmail SMTP fallback then failed with `OSError: [Errno 101] Network is
+  unreachable`. This is Render-specific: Render's network is IPv4-only (see
+  their own docs), but smtp.gmail.com resolves to both an IPv4 and an IPv6
+  address, and Python's default socket resolution can pick the IPv6 one -
+  which fails instantly on Render since there's no IPv6 route at all. Fixed
+  by forcing an IPv4-only socket connection for the SMTP fallback.
+
 WHAT TO SET IN RENDER (Dashboard -> your service -> Environment, or in
 render.yaml with `sync: false` placeholders):
     RESEND_API_KEY       (recommended - from resend.com, free tier available)
@@ -86,6 +103,26 @@ def _send_via_resend(to_email, subject, message):
 # ==============================
 # 📧 EMAIL: GMAIL SMTP (fallback / local dev)
 # ==============================
+def _create_ipv4_ssl_connection(host, port, timeout):
+    """
+    smtplib.SMTP_SSL normally resolves `host` with socket.create_connection(),
+    which lets the OS pick IPv4 or IPv6. Render's network has no IPv6 route
+    at all, so if smtp.gmail.com's IPv6 (AAAA) address is tried, it fails
+    immediately with OSError: [Errno 101] Network is unreachable - this is
+    a well-known Render-specific issue, not a credentials/firewall problem.
+    Forcing AF_INET here skips the IPv6 attempt entirely.
+    """
+    import socket
+    import ssl
+
+    addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    sock.connect(addr_info[0][4])
+    context = ssl.create_default_context()
+    return context.wrap_socket(sock, server_hostname=host)
+
+
 def _send_via_gmail_smtp(to_email, subject, message):
     if not GMAIL_EMAIL:
         return False, "GMAIL_EMAIL not set in environment variables"
@@ -103,9 +140,20 @@ def _send_via_gmail_smtp(to_email, subject, message):
         # stripping them avoids edge cases with some SMTP client versions.
         app_password = GMAIL_APP_PASSWORD.replace(" ", "")
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
+        # Replace the socket smtplib already opened with an IPv4-only one.
+        server.sock.close()
+        server.sock = _create_ipv4_ssl_connection("smtp.gmail.com", 465, 10)
+        server.file = server.sock.makefile("rb")
+        code, resp = server.getreply()
+        if code != 220:
+            raise smtplib.SMTPConnectError(code, resp)
+
+        try:
             server.login(GMAIL_EMAIL, app_password)
             server.send_message(msg)
+        finally:
+            server.close()
 
         return True, None
 
