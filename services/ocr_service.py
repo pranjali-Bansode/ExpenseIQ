@@ -145,14 +145,14 @@ _EXCLUDE_LINE_WORDS = ("saved", "discount", "you save", "off on mrp", "cashback"
 # currency symbols last - so a real total/payment line always wins over an
 # incidental Rs./₹ mention elsewhere on the receipt (like a savings line).
 _AMOUNT_KEYWORD_PATTERNS = [
-    r"grand\s*total\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
-    r"net\s*(?:amount|payable)\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
-    r"amount\s*received\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
-    r"upi\s*payment\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
-    r"total\s*amount\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
-    r"bill\s*amt\.?\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",
-    r"total\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",   # generic "total"
-    r"amount\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+(?:\.\d{2})?)",  # generic "amount"
+    r"grand\s*total\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",
+    r"net\s*(?:amount|payable)\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",
+    r"amount\s*received\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",
+    r"upi\s*payment\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",
+    r"total\s*amount\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",
+    r"bill\s*amt\.?\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",
+    r"total\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",   # generic "total"
+    r"amount\s*[:=]?\s*₹?\s*(?:rs\.?)?\s*(\d+\.\d{2})",  # generic "amount"
 ]
 
 
@@ -162,11 +162,21 @@ def extract_amount(text):
 
     Strategy:
     1. Try specific "this is the total" phrases first (grand total, net
-       amount, amount received, UPI payment, etc.) - these are unambiguous.
-    2. If none match, fall back to the largest ₹/Rs number found on any
-       line that isn't a savings/discount line - on real receipts the
-       grand total is virtually always the largest currency figure printed,
-       while savings/discount lines are smaller call-outs.
+       amount, amount received, UPI payment, etc.), requiring a genuine
+       2-decimal money value right after the phrase. Requiring the decimal
+       part matters: receipts with a GST breakup table often print a
+       column header like "...CESS Total Amount" immediately followed by
+       a data row whose first cell is a small integer (a GST rate-group ID,
+       not money) - e.g. "Total Amount 1 170.34 15.33 ...". Without the
+       mandatory decimal, "total amount" + that stray "1" was being
+       mistaken for the total itself.
+    2. If no phrase matches (e.g. OCR garbled the line - a pen signature
+       stamped across the total/GST area is a common real-world cause),
+       fall back to the LARGEST 2-decimal number anywhere on a
+       non-excluded line, with or without a ₹/Rs symbol. On real receipts
+       the grand total is virtually always the largest money-formatted
+       figure printed, and it doesn't always have a currency symbol right
+       next to it (e.g. a bare "201.00" under a "UPI Payment:" label).
     """
     flat = text.replace("\n", " ").lower()
 
@@ -178,7 +188,24 @@ def extract_amount(text):
             except ValueError:
                 continue
 
-    # Fallback: largest ₹/Rs amount on a line that isn't a discount call-out.
+    # Fallback 1: largest properly-formatted (X.XX) money value on any line
+    # that isn't a savings/discount call-out - works even with no ₹/Rs
+    # symbol nearby, which covers bare totals like "UPI Payment: 201.00".
+    candidates = []
+    for line in text.split("\n"):
+        low = line.lower()
+        if any(word in low for word in _EXCLUDE_LINE_WORDS):
+            continue
+        for m in re.finditer(r"(\d+\.\d{2})", low):
+            try:
+                candidates.append(float(m.group(1)))
+            except ValueError:
+                pass
+    if candidates:
+        return max(candidates)
+
+    # Fallback 2: last resort - a bare integer explicitly marked with ₹/Rs,
+    # for receipts that print no decimal amounts at all.
     candidates = []
     for line in text.split("\n"):
         low = line.lower()
