@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime as _datetime, timedelta
 
 from dotenv import load_dotenv
@@ -29,6 +30,14 @@ from routes.budget import budget_bp
 from services.report_service import generate_expense_report_pdf
 
 load_dotenv()
+
+# Without this, logger.info()/logger.error() calls in email_service.py and
+# alert_service.py have no handler attached and are silently dropped -
+# they never show up in Render's logs, even when something is failing.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 app = Flask(__name__)
 # Read from env (set in Render dashboard); falls back to a dev-only value
