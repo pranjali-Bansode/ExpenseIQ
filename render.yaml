@@ -14,6 +14,9 @@ services:
       # --- GENERAL CONFIGURATION ---
       - key: SECRET_KEY
         sync: false
+       
+      - key: FLASK_ENV
+        value: "production"
 
       # --- EMAIL (SendGrid Web API - no SMTP) ---
       - key: SENDGRID_API_KEY
